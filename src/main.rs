@@ -2,7 +2,7 @@
 #![feature(map_try_insert)]
 #![feature(in_band_lifetimes)]
 
-use crate::parser::{find_comments, find_comments_mut, Expr};
+use crate::parser::{find_comments_mut, Expr};
 use anyhow::anyhow;
 use interp::Interpreter;
 

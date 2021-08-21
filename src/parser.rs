@@ -99,45 +99,6 @@ fn try_insert<K: Eq + Hash + Send + Sync + Debug + Display, V: Send + Sync + Deb
     Ok(())
 }
 
-pub fn find_comments(program: &Program) -> Vec<&Comment> {
-    let mut comments = vec![];
-    for expr in &program.block.0 {
-        comments.extend(find_expr_comments(expr));
-    }
-    comments
-}
-
-fn find_expr_comments(expr: &Expr) -> Vec<&Comment> {
-    let mut comments = vec![];
-    match expr {
-        Expr::Block(Block(exprs)) => {
-            for expr in exprs {
-                comments.extend(find_expr_comments(expr));
-            }
-        }
-        Expr::Comment(c) => comments.push(c),
-        Expr::Assignment(Assignment { r#ref: _, expr }) => {
-            comments.extend(find_expr_comments(expr));
-        }
-        Expr::FunctionCall(FunctionCall { r#ref: _, args }) => {
-            for expr in args {
-                comments.extend(find_expr_comments(expr));
-            }
-        }
-        Expr::While(While {
-            cond,
-            block: Block(exprs),
-        }) => {
-            comments.extend(find_expr_comments(cond));
-            for expr in exprs {
-                comments.extend(find_expr_comments(expr));
-            }
-        }
-        Expr::Ref(_) | Expr::IntLiteral(_) => {}
-    }
-    comments
-}
-
 #[derive(Debug, Clone)]
 pub enum Ref {
     CommentRef(String),
