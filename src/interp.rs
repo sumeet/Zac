@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail};
 use dyn_partial_eq::*;
 use std::collections::BTreeMap;
 
-use crate::parser::{Assignment, Expr, FunctionCall};
+use crate::parser::{Assignment, Expr, FunctionCall, While};
 use dyn_clone::DynClone;
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -22,6 +22,12 @@ impl Interpreter {
         scope
             .0
             .insert("eq".into(), Value::Function(Box::new(EqBuiltin {})));
+        scope
+            .0
+            .insert("not".into(), Value::Function(Box::new(NotBuiltin {})));
+        scope
+            .0
+            .insert("print".into(), Value::Function(Box::new(PrintBuiltin {})));
         Self {
             scope: Rc::new(RefCell::new(scope)),
         }
@@ -45,6 +51,16 @@ impl Interpreter {
                     .map(|e| self.interp(e))
                     .collect::<anyhow::Result<Vec<_>>>()?;
                 func.call(self, &args)?
+            }
+            Expr::While(While { cond, block }) => {
+                // TODO: need to make aa new scope for a new block
+                let count = 0;
+                while self.interp(cond)?.as_bool()? {
+                    for expr in block {
+                        self.interp(expr)?;
+                    }
+                }
+                Value::Int(count)
             }
         };
         Ok(val)
@@ -100,6 +116,13 @@ impl Value {
             otherwise => bail!("{:?} is not an integer", otherwise),
         }
     }
+
+    fn as_bool(&self) -> anyhow::Result<bool> {
+        match self {
+            Value::Bool(b) => Ok(*b),
+            otherwise => bail!("{:?} is not a bool", otherwise),
+        }
+    }
 }
 
 #[derive(Debug, Clone, DynPartialEq, PartialEq)]
@@ -129,5 +152,25 @@ impl Function for EqBuiltin {
         let lhs = get_arg(args, 0)?;
         let rhs = get_arg(args, 1)?;
         Ok(Value::Bool(lhs == rhs))
+    }
+}
+
+#[derive(Debug, Clone, DynPartialEq, PartialEq)]
+struct NotBuiltin {}
+impl Function for NotBuiltin {
+    fn call(&self, _: &Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+        let val = get_arg(args, 0)?.as_bool()?;
+        Ok(Value::Bool(!val))
+    }
+}
+
+// TODO: get rid of print because we'll be doing it with comments
+#[derive(Debug, Clone, DynPartialEq, PartialEq)]
+struct PrintBuiltin {}
+impl Function for PrintBuiltin {
+    fn call(&self, _: &Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+        let val = get_arg(args, 0)?;
+        println!("{:?}", val);
+        Ok(val.clone())
     }
 }

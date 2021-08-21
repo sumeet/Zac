@@ -1,7 +1,7 @@
 use std::iter::Peekable;
 use std::slice::Iter;
 
-use crate::parser::{Assignment, Expr, FunctionCall, Program};
+use crate::parser::{Assignment, Expr, FunctionCall, Program, While};
 
 pub fn assemble_program(program: &Program, assembled: &mut String) {
     let mut exprs = program.exprs.iter().peekable();
@@ -45,6 +45,18 @@ fn assemble_expr(assembled: &mut String, exprs: &mut Peekable<Iter<Expr>>, expr:
                 assemble_expr(assembled, exprs, last);
             }
             assembled.push_str(")");
+            assembled.push_str("\n");
+        }
+        Expr::While(While { cond, block }) => {
+            assembled.push_str("while (");
+            assemble_expr(assembled, exprs, cond);
+            if let Some((last, init)) = block.split_last() {
+                for expr in init {
+                    assemble_expr(assembled, exprs, expr);
+                    assembled.push_str("\n");
+                }
+                assemble_expr(assembled, exprs, last);
+            }
         }
     }
 }

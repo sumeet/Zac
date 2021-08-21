@@ -12,6 +12,7 @@ pub enum Expr {
     IntLiteral(i128),
     Ref(String),
     FunctionCall(FunctionCall),
+    While(While),
 }
 
 #[derive(Debug)]
@@ -26,11 +27,28 @@ pub struct FunctionCall {
     pub args: Vec<Expr>,
 }
 
+#[derive(Debug)]
+pub struct While {
+    pub cond: Box<Expr>,
+    pub block: Vec<Expr>,
+}
+
 // usage of peg stolen from https://github.com/A1Liu/gone/blob/master/src/parser.rs
 peg::parser! {
     pub grammar parser() for str {
         pub rule program() -> Program
             = _ exprs:(expr() ** _) _  { Program { exprs } }
+
+        rule block() -> Vec<Expr>
+            = _ exprs:(expr() ** _) _ { exprs }
+
+        rule while_loop() -> Expr
+            = "while(" _? cond:expr() ")" _* "{" _? block:block() _? "}" {
+                Expr::While(While {
+                    cond: Box::new(cond),
+                    block,
+                })
+            }
 
         rule expr() -> Expr
             = comment() / assignment() / int() / func_call() / r#ref()

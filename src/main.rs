@@ -8,16 +8,20 @@ mod reassemble;
 
 pub fn main() -> anyhow::Result<()> {
     let input = r#"
-// hell jwieof iaowef
 // yo
 //
 // this is the continuation
-
 let mystring = // hello
-let mynum = 1234
+
+// TODO: can't set mynum to 0
+let mynum = 1
 
 // this is a different comment
 add(mynum, mynum)
+
+while(1) {
+let x = 123
+}
 "#;
     let program = parser::parser::program(input)?;
     let mut assembled = String::new();
