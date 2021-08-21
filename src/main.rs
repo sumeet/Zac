@@ -2,7 +2,7 @@
 #![feature(map_try_insert)]
 #![feature(in_band_lifetimes)]
 
-use crate::parser::{find_comments_mut, Expr};
+use crate::parser::{find_comments_mut, Expr, Program};
 use anyhow::anyhow;
 use interp::Interpreter;
 
@@ -42,6 +42,17 @@ add(mynum, mynum)
     let block = Expr::Block(program.block.clone());
     interp.interp(&block)?;
 
+    replace_comments_in_source_code(&mut program, &mut interp)?;
+
+    let assembled = reassemble::output_code(&program);
+    println!("{}", assembled);
+    Ok(())
+}
+
+fn replace_comments_in_source_code(
+    mut program: &mut Program,
+    interp: &mut Interpreter,
+) -> anyhow::Result<()> {
     let mut comments = find_comments_mut(&mut program)?;
     for (name, body) in interp.comments() {
         let code_comment = comments
@@ -49,8 +60,5 @@ add(mynum, mynum)
             .ok_or_else(|| anyhow!("original code didn't contain comment {}", name))?;
         code_comment.body = body.to_string();
     }
-
-    let assembled = reassemble::output_code(&program);
-    println!("{}", assembled);
     Ok(())
 }
