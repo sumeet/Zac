@@ -41,9 +41,7 @@ pub fn find_comments_mut(
     Ok(comments)
 }
 
-fn find_expr_comments_mut<'b, 'a: 'b>(
-    expr: &'a mut Expr,
-) -> anyhow::Result<HashMap<String, &'b mut Comment>> {
+fn find_expr_comments_mut(expr: &'a mut Expr) -> anyhow::Result<HashMap<String, &'a mut Comment>> {
     let mut comments = HashMap::new();
     match expr {
         Expr::Block(Block(exprs)) => {
@@ -54,7 +52,7 @@ fn find_expr_comments_mut<'b, 'a: 'b>(
         Expr::Comment(c) => {
             let name = c.name.clone();
             if let Some(name) = name {
-                try_insert(&mut comments, name, c);
+                try_insert(&mut comments, name, c)?;
             }
         }
         Expr::Assignment(Assignment { r#ref: _, expr }) => {
@@ -84,7 +82,7 @@ pub fn try_extend<K: Eq + Hash + Send + Sync + Debug + Display, V: Send + Sync +
     from: &mut HashMap<K, &'a mut V>,
 ) -> anyhow::Result<()> {
     for (k, v) in from.drain() {
-        try_insert(into, k, v);
+        try_insert(into, k, v)?;
     }
     Ok(())
 }

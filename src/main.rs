@@ -2,7 +2,8 @@
 #![feature(map_try_insert)]
 #![feature(in_band_lifetimes)]
 
-use crate::parser::{find_comments, Expr};
+use crate::parser::{find_comments, find_comments_mut, Expr};
+use anyhow::anyhow;
 use interp::Interpreter;
 
 mod interp;
@@ -29,18 +30,25 @@ add(mynum, mynum)
 // let x = 123
 // }
 "#;
-    let program = parser::parser::program(input)?;
+    let mut program = parser::parser::program(input)?;
 
     let mut interp = Interpreter::new();
-    for comment in find_comments(&program) {
+    for (_, comment) in find_comments_mut(&mut program)? {
         interp.add_comment(comment)?;
     }
 
     let block = Expr::Block(program.block.clone());
     interp.interp(&block)?;
 
+    let mut comments = find_comments_mut(&mut program)?;
+    for (name, body) in interp.comments() {
+        let code_comment = comments
+            .get_mut(name)
+            .ok_or_else(|| anyhow!("original code didn't contain comment {}", name))?;
+        code_comment.body = body.to_string();
+    }
+
     let assembled = reassemble::output_code(&program);
     println!("{}", assembled);
-
     Ok(())
 }

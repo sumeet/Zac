@@ -35,6 +35,10 @@ impl Interpreter {
         }
     }
 
+    pub fn comments(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.comments.iter().map(|(k, v)| (k.as_str(), v.as_str()))
+    }
+
     pub fn add_comment(&mut self, comment: &Comment) -> anyhow::Result<()> {
         if let Some(name) = &comment.name {
             if self.comments.contains_key(name) {
