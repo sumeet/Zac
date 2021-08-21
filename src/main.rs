@@ -1,5 +1,6 @@
 #![feature(exclusive_range_pattern)]
 
+use crate::parser::Expr;
 use interp::Interpreter;
 
 mod interp;
@@ -8,6 +9,7 @@ mod reassemble;
 
 pub fn main() -> anyhow::Result<()> {
     let input = r#"
+// header:
 // yo
 //
 // this is the continuation
@@ -19,19 +21,17 @@ let mynum = 1
 // this is a different comment
 add(mynum, mynum)
 
-while(1) {
-let x = 123
-}
+// while(1) {
+// let x = 123
+// }
 "#;
     let program = parser::parser::program(input)?;
-    let mut assembled = String::new();
-    reassemble::assemble_program(&program, &mut assembled);
+    let assembled = reassemble::assemble_program(&program);
     println!("{}", assembled);
 
     let interp = Interpreter::new();
-    for expr in &program.exprs {
-        interp.interp(expr)?;
-    }
+    let block = Expr::Block(program.block);
+    interp.interp(&block)?;
 
     Ok(())
 }

@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail};
 use dyn_partial_eq::*;
 use std::collections::BTreeMap;
 
-use crate::parser::{Assignment, Expr, FunctionCall, While};
+use crate::parser::{Assignment, Block, Expr, FunctionCall, While};
 use dyn_clone::DynClone;
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -35,6 +35,16 @@ impl Interpreter {
 
     pub fn interp(&self, expr: &Expr) -> anyhow::Result<Value> {
         let val = match expr {
+            Expr::Block(Block(exprs)) => {
+                // TODO: need to make a new scope for the block, right?
+                let (last, init) = exprs
+                    .split_last()
+                    .ok_or(anyhow!("a block can't be empty"))?;
+                for expr in init {
+                    self.interp(expr)?;
+                }
+                self.interp(last)?
+            }
             Expr::Comment(s) => Value::String(s.into()),
             Expr::Assignment(Assignment { name, expr }) => {
                 let val = self.interp(expr)?;
@@ -54,11 +64,10 @@ impl Interpreter {
             }
             Expr::While(While { cond, block }) => {
                 // TODO: need to make aa new scope for a new block
-                let count = 0;
+                let mut count = 0;
                 while self.interp(cond)?.as_bool()? {
-                    for expr in block {
-                        self.interp(expr)?;
-                    }
+                    self.interp(&Expr::Block(block.clone()))?;
+                    count += 1;
                 }
                 Value::Int(count)
             }

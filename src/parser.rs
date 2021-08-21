@@ -2,11 +2,15 @@ use itertools::Itertools;
 
 #[derive(Debug)]
 pub struct Program {
-    pub exprs: Vec<Expr>,
+    pub block: Block,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub struct Block(pub Vec<Expr>);
+
+#[derive(Debug, Clone)]
 pub enum Expr {
+    Block(Block),
     Comment(String),
     Assignment(Assignment),
     IntLiteral(i128),
@@ -15,32 +19,32 @@ pub enum Expr {
     While(While),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Assignment {
     pub name: String,
     pub expr: Box<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FunctionCall {
     pub name: String,
     pub args: Vec<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct While {
     pub cond: Box<Expr>,
-    pub block: Vec<Expr>,
+    pub block: Block,
 }
 
 // usage of peg stolen from https://github.com/A1Liu/gone/blob/master/src/parser.rs
 peg::parser! {
     pub grammar parser() for str {
         pub rule program() -> Program
-            = _ exprs:(expr() ** _) _  { Program { exprs } }
+            = block:block()  { Program { block } }
 
-        rule block() -> Vec<Expr>
-            = _ exprs:(expr() ** _) _ { exprs }
+        rule block() -> Block
+            = _ exprs:(expr() ** _) _ { Block(exprs) }
 
         rule while_loop() -> Expr
             = "while(" _? cond:expr() ")" _* "{" _? block:block() _? "}" {
