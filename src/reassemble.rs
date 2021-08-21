@@ -1,4 +1,4 @@
-use crate::parser::{Assignment, Expr, FunctionCall, Program, While};
+use crate::parser::{Assignment, Expr, FunctionCall, Program, Ref, While};
 
 pub fn assemble_program(program: &Program) -> String {
     let mut assembled = String::new();
@@ -31,15 +31,9 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
             assemble_expr(assembled, expr);
         }
         Expr::IntLiteral(n) => assembled.push_str(&n.to_string()),
-        Expr::CommentRef(name) => {
-            assembled.push_str("#");
-            assembled.push_str(name);
-        }
-        Expr::Ref(s) => {
-            assembled.push_str(s);
-        }
-        Expr::FunctionCall(FunctionCall { name, args }) => {
-            assembled.push_str(name);
+        Expr::Ref(r#ref) => assemble_ref(r#ref, assembled),
+        Expr::FunctionCall(FunctionCall { r#ref, args }) => {
+            assemble_ref(r#ref, assembled);
             assembled.push_str("(");
             if let Some((last, init)) = args.split_last() {
                 for arg in init {
@@ -57,5 +51,15 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
             assemble_expr(assembled, &Expr::Block(block.clone()));
             assembled.push_str("\n}");
         }
+    }
+}
+
+fn assemble_ref(r#ref: &Ref, assembled: &mut String) {
+    match r#ref {
+        Ref::CommentRef(s) => {
+            assembled.push_str("#");
+            assembled.push_str(s);
+        }
+        Ref::VarRef(s) => assembled.push_str(s),
     }
 }

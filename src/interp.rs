@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail};
 use dyn_partial_eq::*;
 use std::collections::{BTreeMap, HashMap};
 
-use crate::parser::{Assignment, Block, Expr, FunctionCall, While};
+use crate::parser::{Assignment, Block, Expr, FunctionCall, Ref, While};
 use dyn_clone::DynClone;
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -54,9 +54,9 @@ impl Interpreter {
                 val
             }
             Expr::IntLiteral(n) => Value::Int(*n),
-            Expr::Ref(name) => self.get_ref(name)?,
-            Expr::FunctionCall(FunctionCall { name, args }) => {
-                let var = self.get_ref(name)?;
+            Expr::Ref(r#ref) => self.get_ref(r#ref)?,
+            Expr::FunctionCall(FunctionCall { r#ref, args }) => {
+                let var = self.get_ref(r#ref)?;
                 let func = var.as_func()?;
                 let args = args
                     .iter()
@@ -73,19 +73,28 @@ impl Interpreter {
                 }
                 Value::Int(count)
             }
-            Expr::CommentRef(name) => todo!(),
         };
         Ok(val)
     }
 
     // TODO: this should probably be a refcell
-    fn get_ref(&self, name: &str) -> anyhow::Result<Value> {
-        self.scope
-            .borrow()
-            .0
-            .get(name)
-            .ok_or_else(|| anyhow!("undefined name {}", name))
-            .map(|val| val.clone())
+    fn get_ref(&self, r#ref: &Ref) -> anyhow::Result<Value> {
+        match r#ref {
+            Ref::CommentRef(name) => {
+                let comment_body = self
+                    .comments
+                    .get(name)
+                    .ok_or_else(|| anyhow!("undefined comment {}", name))?;
+                Ok(Value::String(comment_body.clone()))
+            }
+            Ref::VarRef(name) => self
+                .scope
+                .borrow()
+                .0
+                .get(name)
+                .ok_or_else(|| anyhow!("undefined name {}", name))
+                .map(|val| val.clone()),
+        }
     }
 }
 

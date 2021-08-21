@@ -13,13 +13,18 @@ pub struct Block(pub Vec<Expr>);
 #[derive(Debug, Clone)]
 pub enum Expr {
     Block(Block),
-    CommentRef(String),
+    Ref(Ref),
     Comment(String),
     Assignment(Assignment),
     IntLiteral(i128),
-    Ref(String),
     FunctionCall(FunctionCall),
     While(While),
+}
+
+#[derive(Debug, Clone)]
+pub enum Ref {
+    CommentRef(String),
+    VarRef(String),
 }
 
 #[derive(Debug, Clone)]
@@ -30,7 +35,7 @@ pub struct Assignment {
 
 #[derive(Debug, Clone)]
 pub struct FunctionCall {
-    pub name: String,
+    pub r#ref: Ref,
     pub args: Vec<Expr>,
 }
 
@@ -58,20 +63,25 @@ peg::parser! {
             }
 
         rule expr() -> Expr
-            = comment() / assignment() / int() / func_call() / r#ref() / comment_ref()
+            = comment() / assignment() / int() / func_call() / r#ref()
 
         rule func_call() -> Expr
-            = name:ident() "(" _? args:(expr() ** comma()) _? ")" {
+            = r#ref:var_ref() "(" _? args:(expr() ** comma()) _? ")" {
                 Expr::FunctionCall(FunctionCall {
-                    name: name.into(),
+                    r#ref,
                     args,
                 })
             }
 
         rule r#ref() -> Expr
-            = r:ident() { Expr::Ref(r.into()) }
-        rule comment_ref() -> Expr
-            = "#" r:ident() { Expr::CommentRef(r.into()) }
+            = r:ref_ref() { Expr::Ref(r) }
+        rule ref_ref() -> Ref
+            = var_ref() / comment_ref()
+        rule var_ref() -> Ref
+            = r:ident() { Ref::VarRef(r.into()) }
+        rule comment_ref() -> Ref
+            = "#" r:ident() { Ref::CommentRef(r.into()) }
+
         rule assignment() -> Expr
             = "let" _ ident:ident() _ "=" _ expr:expr() { Expr::Assignment(Assignment {
                 name: ident.to_string(),
