@@ -1,6 +1,6 @@
 use anyhow::{anyhow, bail};
 use dyn_partial_eq::*;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use crate::parser::{Assignment, Block, Expr, FunctionCall, While};
 use dyn_clone::DynClone;
@@ -11,6 +11,7 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub struct Interpreter {
     scope: Rc<RefCell<Scope>>,
+    comments: HashMap<String, String>,
 }
 
 impl Interpreter {
@@ -30,6 +31,7 @@ impl Interpreter {
             .insert("print".into(), Value::Function(Box::new(PrintBuiltin {})));
         Self {
             scope: Rc::new(RefCell::new(scope)),
+            comments: HashMap::new(),
         }
     }
 
@@ -71,6 +73,7 @@ impl Interpreter {
                 }
                 Value::Int(count)
             }
+            Expr::CommentRef(name) => todo!(),
         };
         Ok(val)
     }

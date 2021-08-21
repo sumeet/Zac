@@ -1,5 +1,3 @@
-use std::slice::Iter;
-
 use crate::parser::{Assignment, Expr, FunctionCall, Program, While};
 
 pub fn assemble_program(program: &Program) -> String {
@@ -33,6 +31,10 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
             assemble_expr(assembled, expr);
         }
         Expr::IntLiteral(n) => assembled.push_str(&n.to_string()),
+        Expr::CommentRef(name) => {
+            assembled.push_str("#");
+            assembled.push_str(name);
+        }
         Expr::Ref(s) => {
             assembled.push_str(s);
         }

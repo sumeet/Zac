@@ -8,9 +8,12 @@ pub struct Program {
 #[derive(Debug, Clone)]
 pub struct Block(pub Vec<Expr>);
 
+// TODO: should probably put a concept of newline into here because newlines from the programmer
+// are important
 #[derive(Debug, Clone)]
 pub enum Expr {
     Block(Block),
+    CommentRef(String),
     Comment(String),
     Assignment(Assignment),
     IntLiteral(i128),
@@ -55,7 +58,7 @@ peg::parser! {
             }
 
         rule expr() -> Expr
-            = comment() / assignment() / int() / func_call() / r#ref()
+            = comment() / assignment() / int() / func_call() / r#ref() / comment_ref()
 
         rule func_call() -> Expr
             = name:ident() "(" _? args:(expr() ** comma()) _? ")" {
@@ -67,7 +70,8 @@ peg::parser! {
 
         rule r#ref() -> Expr
             = r:ident() { Expr::Ref(r.into()) }
-
+        rule comment_ref() -> Expr
+            = "#" r:ident() { Expr::CommentRef(r.into()) }
         rule assignment() -> Expr
             = "let" _ ident:ident() _ "=" _ expr:expr() { Expr::Assignment(Assignment {
                 name: ident.to_string(),
