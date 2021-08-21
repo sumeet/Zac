@@ -29,7 +29,7 @@ let #header = // here u go
 add(mynum, mynum)
 
 // while(1) {
-// let x = 123
+//   let x = 123
 // }
 "#;
     let mut program = parser::parser::program(input)?;

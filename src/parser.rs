@@ -211,13 +211,14 @@ peg::parser! {
             = body:comment_string() { Expr::Comment(Comment { name: None, body })}
 
         rule comment_string() -> String
-            = "/" "/" _? body:$([^ '\r' | '\n']*)? following:following_comment()*  {
+            = "/" "/" onespace()? body:$([^ '\r' | '\n']*)? following:following_comment()*  {
                 body.map(|b| b.to_owned()).into_iter().chain(following.into_iter()).join("\n")
             }
         rule following_comment() -> String
             = newline() c:comment_string() {
                 if c.starts_with("//") {
-                    let c = c.trim_start_matches("//").trim_start();
+                    let c = c.trim_start_matches("//");
+                    let c = c.strip_prefix(' ').unwrap_or(c);
                     format!("\n{}", c)
                 } else {
                     c
@@ -228,7 +229,8 @@ peg::parser! {
         rule ident_start() -> &'input str = $(['a'..='z' | 'A'..='Z' | '_']+)
 
         rule comma() -> () = _? "," _?
-        rule nbspace() = [' ' | '\t']+
+        rule nbspace() = onespace()+
+        rule onespace() = [' ' | '\t']
         rule newline() = "\n" / "\r\n"
         rule whitespace() = (nbspace() / newline())+
         rule _() = quiet!{ whitespace() };
