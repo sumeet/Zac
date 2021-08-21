@@ -49,7 +49,7 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
             if let Some((last, init)) = args.split_last() {
                 for arg in init {
                     assemble_expr(assembled, arg);
-                    assembled.push_str(",");
+                    assembled.push_str(", ");
                 }
                 assemble_expr(assembled, last);
             }

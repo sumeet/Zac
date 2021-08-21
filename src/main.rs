@@ -22,8 +22,10 @@ let mystring = // hello
 let mynum = 1
 
 let #header = // here u go
+// and this is more
 
 // this is a different comment
+// and the continuation
 add(mynum, mynum)
 
 // while(1) {

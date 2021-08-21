@@ -212,13 +212,13 @@ peg::parser! {
 
         rule comment_string() -> String
             = "/" "/" _? body:$([^ '\r' | '\n']*)? following:following_comment()*  {
-                body.map(|b| b.to_owned()).into_iter().chain(following.into_iter()).join(" ")
+                body.map(|b| b.to_owned()).into_iter().chain(following.into_iter()).join("\n")
             }
         rule following_comment() -> String
             = newline() c:comment_string() {
                 if c.starts_with("//") {
                     let c = c.trim_start_matches("//").trim_start();
-                    format!("\n\n{}", c)
+                    format!("\n{}", c)
                 } else {
                     c
                 }
