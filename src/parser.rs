@@ -10,7 +10,29 @@ pub struct Program {
 }
 
 #[derive(Debug, Clone)]
-pub struct Block(pub Vec<Expr>);
+pub struct Block(pub Vec<BlockEl>);
+
+impl Block {
+    pub fn exprs(&self) -> impl Iterator<Item = &Expr> + '_ {
+        self.0.iter().filter_map(|block_el| match block_el {
+            BlockEl::Expr(expr) => Some(expr),
+            BlockEl::BlankLine => None,
+        })
+    }
+
+    pub fn exprs_mut(&mut self) -> impl Iterator<Item = &mut Expr> + '_ {
+        self.0.iter_mut().filter_map(|block_el| match block_el {
+            BlockEl::Expr(expr) => Some(expr),
+            BlockEl::BlankLine => None,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum BlockEl {
+    Expr(Expr),
+    BlankLine,
+}
 
 // TODO: should probably put a concept of newline into here because newlines from the programmer
 // are important
@@ -35,7 +57,7 @@ pub fn find_comments_mut(
     program: &'a mut Program,
 ) -> anyhow::Result<HashMap<String, &'a mut Comment>> {
     let mut comments = HashMap::new();
-    for expr in &mut program.block.0 {
+    for expr in &mut program.block.exprs_mut() {
         try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
     }
     Ok(comments)
@@ -44,8 +66,8 @@ pub fn find_comments_mut(
 fn find_expr_comments_mut(expr: &'a mut Expr) -> anyhow::Result<HashMap<String, &'a mut Comment>> {
     let mut comments = HashMap::new();
     match expr {
-        Expr::Block(Block(exprs)) => {
-            for expr in exprs {
+        Expr::Block(block) => {
+            for expr in block.exprs_mut() {
                 try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
             }
         }
@@ -63,12 +85,9 @@ fn find_expr_comments_mut(expr: &'a mut Expr) -> anyhow::Result<HashMap<String, 
                 try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
             }
         }
-        Expr::While(While {
-            cond,
-            block: Block(exprs),
-        }) => {
+        Expr::While(While { cond, block }) => {
             try_extend(&mut comments, &mut find_expr_comments_mut(cond)?)?;
-            for expr in exprs {
+            for expr in block.exprs_mut() {
                 try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
             }
         }
@@ -130,7 +149,16 @@ peg::parser! {
             = block:block()  { Program { block } }
 
         rule block() -> Block
-            = _ exprs:(expr() ** _) _ { Block(exprs) }
+            = _ block_els:(block_el() ** _) _ { Block(block_els) }
+
+        rule block_el() -> BlockEl
+            = block_el_expr() / block_el_blankline()
+
+        rule block_el_expr() -> BlockEl
+            = e:expr() { BlockEl::Expr(e) }
+
+        rule block_el_blankline() -> BlockEl
+            = newline() { BlockEl::BlankLine }
 
         rule while_loop() -> Expr
             = "while(" _? cond:expr() ")" _* "{" _? block:block() _? "}" {

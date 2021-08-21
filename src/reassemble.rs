@@ -1,4 +1,4 @@
-use crate::parser::{Assignment, Comment, Expr, FunctionCall, Program, Ref, While};
+use crate::parser::{Assignment, BlockEl, Comment, Expr, FunctionCall, Program, Ref, While};
 
 pub fn output_code(program: &Program) -> String {
     let mut assembled = String::new();
@@ -9,9 +9,14 @@ pub fn output_code(program: &Program) -> String {
 fn assemble_expr(assembled: &mut String, expr: &Expr) {
     match expr {
         Expr::Block(block) => {
-            for expr in &block.0 {
-                assemble_expr(assembled, expr);
-                assembled.push_str("\n");
+            for block_el in &block.0 {
+                match block_el {
+                    BlockEl::Expr(expr) => {
+                        assemble_expr(assembled, expr);
+                        assembled.push_str("\n");
+                    }
+                    BlockEl::BlankLine => assembled.push_str("\n"),
+                }
             }
         }
         Expr::Comment(Comment { name, body }) => {
