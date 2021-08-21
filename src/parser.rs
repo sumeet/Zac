@@ -16,14 +16,14 @@ impl Block {
     pub fn exprs(&self) -> impl Iterator<Item = &Expr> + '_ {
         self.0.iter().filter_map(|block_el| match block_el {
             BlockEl::Expr(expr) => Some(expr),
-            BlockEl::BlankLine => None,
+            BlockEl::NewLine => None,
         })
     }
 
     pub fn exprs_mut(&mut self) -> impl Iterator<Item = &mut Expr> + '_ {
         self.0.iter_mut().filter_map(|block_el| match block_el {
             BlockEl::Expr(expr) => Some(expr),
-            BlockEl::BlankLine => None,
+            BlockEl::NewLine => None,
         })
     }
 }
@@ -31,7 +31,7 @@ impl Block {
 #[derive(Debug, Clone)]
 pub enum BlockEl {
     Expr(Expr),
-    BlankLine,
+    NewLine,
 }
 
 // TODO: should probably put a concept of newline into here because newlines from the programmer
@@ -149,7 +149,7 @@ peg::parser! {
             = block:block()  { Program { block } }
 
         rule block() -> Block
-            = _ block_els:(block_el() ** _) _ { Block(block_els) }
+            = block_els:(block_el()+) { Block(block_els) }
 
         rule block_el() -> BlockEl
             = block_el_expr() / block_el_blankline()
@@ -158,7 +158,7 @@ peg::parser! {
             = e:expr() { BlockEl::Expr(e) }
 
         rule block_el_blankline() -> BlockEl
-            = newline() { BlockEl::BlankLine }
+            = newline() { BlockEl::NewLine }
 
         rule while_loop() -> Expr
             = "while(" _? cond:expr() ")" _* "{" _? block:block() _? "}" {

@@ -13,9 +13,8 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
                 match block_el {
                     BlockEl::Expr(expr) => {
                         assemble_expr(assembled, expr);
-                        assembled.push_str("\n");
                     }
-                    BlockEl::BlankLine => assembled.push_str("\n"),
+                    BlockEl::NewLine => assembled.push_str("\n"),
                 }
             }
         }
