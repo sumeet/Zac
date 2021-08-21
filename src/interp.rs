@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail};
 use dyn_partial_eq::*;
 use std::collections::{BTreeMap, HashMap};
 
-use crate::parser::{Assignment, Block, Expr, FunctionCall, Ref, While};
+use crate::parser::{Assignment, Block, Comment, Expr, FunctionCall, Ref, While};
 use dyn_clone::DynClone;
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -47,7 +47,7 @@ impl Interpreter {
                 }
                 self.interp(last)?
             }
-            Expr::Comment(s) => Value::String(s.into()),
+            Expr::Comment(Comment { name: _, body }) => Value::String(body.into()),
             Expr::Assignment(Assignment { name, expr }) => {
                 let val = self.interp(expr)?;
                 self.scope.borrow_mut().0.insert(name.into(), val.clone());

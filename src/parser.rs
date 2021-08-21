@@ -14,11 +14,17 @@ pub struct Block(pub Vec<Expr>);
 pub enum Expr {
     Block(Block),
     Ref(Ref),
-    Comment(String),
+    Comment(Comment),
     Assignment(Assignment),
     IntLiteral(i128),
     FunctionCall(FunctionCall),
     While(While),
+}
+
+#[derive(Debug, Clone)]
+pub struct Comment {
+    pub name: Option<String>,
+    pub body: String,
 }
 
 #[derive(Debug, Clone)]
@@ -80,7 +86,9 @@ peg::parser! {
         rule var_ref() -> Ref
             = r:ident() { Ref::VarRef(r.into()) }
         rule comment_ref() -> Ref
-            = "#" r:ident() { Ref::CommentRef(r.into()) }
+            = r:comment_ident() { Ref::CommentRef(r) }
+        rule comment_ident() -> String
+            = "#" i:ident() { i.into() }
 
         rule assignment() -> Expr
             = "let" _ ident:ident() _ "=" _ expr:expr() { Expr::Assignment(Assignment {
@@ -92,13 +100,22 @@ peg::parser! {
         rule int() -> Expr
             = num:$(['1' .. '9']+ ['0' .. '9']*) { Expr::IntLiteral(num.parse().unwrap()) }
 
-        rule comment() -> Expr = c:comment_string() { Expr::Comment(c) }
+        rule comment() -> Expr = named_comment() / anon_comment()
+
+        rule named_comment() -> Expr
+            = "/" "/" _? name:comment_ident() body:following_comment()?  {
+                Expr::Comment(Comment { name: Some(name), body: body.unwrap_or_else(|| "".into()) })
+            }
+
+        rule anon_comment() -> Expr
+            = body:comment_string() { Expr::Comment(Comment { name: None, body })}
+
         rule comment_string() -> String
             = "/" "/" _? body:$([^ '\r' | '\n']*)? following:following_comment()*  {
                 body.map(|b| b.to_owned()).into_iter().chain(following.into_iter()).join(" ")
             }
         rule following_comment() -> String
-            = newline()? c:comment_string() {
+            = newline() c:comment_string() {
                 if c.starts_with("//") {
                     let c = c.trim_start_matches("//").trim_start();
                     format!("\n\n{}", c)

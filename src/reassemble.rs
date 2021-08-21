@@ -1,4 +1,4 @@
-use crate::parser::{Assignment, Expr, FunctionCall, Program, Ref, While};
+use crate::parser::{Assignment, Comment, Expr, FunctionCall, Program, Ref, While};
 
 pub fn assemble_program(program: &Program) -> String {
     let mut assembled = String::new();
@@ -14,7 +14,14 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
                 assembled.push_str("\n");
             }
         }
-        Expr::Comment(ref body) => {
+        Expr::Comment(Comment { name, body }) => {
+            if let Some(name) = name {
+                assembled.push_str("// #");
+                assembled.push_str(name);
+                assembled.push_str(":");
+                assembled.push_str("\n");
+            }
+
             let mut lines = body.lines().peekable();
             while let Some(line) = lines.next() {
                 assembled.push_str("// ");

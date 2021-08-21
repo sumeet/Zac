@@ -9,7 +9,7 @@ mod reassemble;
 
 pub fn main() -> anyhow::Result<()> {
     let input = r#"
-// header:
+// #header
 // yo
 //
 // this is the continuation
