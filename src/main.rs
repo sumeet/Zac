@@ -1,4 +1,6 @@
 #![feature(exclusive_range_pattern)]
+#![feature(map_try_insert)]
+#![feature(in_band_lifetimes)]
 
 use crate::parser::{find_comments, Expr};
 use interp::Interpreter;

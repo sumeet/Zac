@@ -1,4 +1,8 @@
+use anyhow::{anyhow, bail};
 use itertools::Itertools;
+use std::collections::HashMap;
+use std::fmt::{Debug, Display};
+use std::hash::Hash;
 
 #[derive(Debug)]
 pub struct Program {
@@ -25,6 +29,76 @@ pub enum Expr {
 pub struct Comment {
     pub name: Option<String>,
     pub body: String,
+}
+
+pub fn find_comments_mut(
+    program: &'a mut Program,
+) -> anyhow::Result<HashMap<String, &'a mut Comment>> {
+    let mut comments = HashMap::new();
+    for expr in &mut program.block.0 {
+        try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
+    }
+    Ok(comments)
+}
+
+fn find_expr_comments_mut<'b, 'a: 'b>(
+    expr: &'a mut Expr,
+) -> anyhow::Result<HashMap<String, &'b mut Comment>> {
+    let mut comments = HashMap::new();
+    match expr {
+        Expr::Block(Block(exprs)) => {
+            for expr in exprs {
+                try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
+            }
+        }
+        Expr::Comment(c) => {
+            let name = c.name.clone();
+            if let Some(name) = name {
+                try_insert(&mut comments, name, c);
+            }
+        }
+        Expr::Assignment(Assignment { r#ref: _, expr }) => {
+            try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
+        }
+        Expr::FunctionCall(FunctionCall { r#ref: _, args }) => {
+            for expr in args {
+                try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
+            }
+        }
+        Expr::While(While {
+            cond,
+            block: Block(exprs),
+        }) => {
+            try_extend(&mut comments, &mut find_expr_comments_mut(cond)?)?;
+            for expr in exprs {
+                try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
+            }
+        }
+        Expr::Ref(_) | Expr::IntLiteral(_) => {}
+    }
+    Ok(comments)
+}
+
+pub fn try_extend<K: Eq + Hash + Send + Sync + Debug + Display, V: Send + Sync + Debug>(
+    into: &mut HashMap<K, &'a mut V>,
+    from: &mut HashMap<K, &'a mut V>,
+) -> anyhow::Result<()> {
+    for (k, v) in from.drain() {
+        try_insert(into, k, v);
+    }
+    Ok(())
+}
+
+fn try_insert<K: Eq + Hash + Send + Sync + Debug + Display, V: Send + Sync + Debug>(
+    into: &mut HashMap<K, &'a mut V>,
+    k: K,
+    v: &'a mut V,
+) -> anyhow::Result<()> {
+    if into.contains_key(&k) {
+        bail!(anyhow!("key {} already exists", k));
+    }
+    into.insert(k, v);
+    Ok(())
 }
 
 pub fn find_comments(program: &Program) -> Vec<&Comment> {
@@ -63,7 +137,6 @@ fn find_expr_comments(expr: &Expr) -> Vec<&Comment> {
         }
         Expr::Ref(_) | Expr::IntLiteral(_) => {}
     }
-
     comments
 }
 
