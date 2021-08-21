@@ -35,7 +35,17 @@ impl Interpreter {
         }
     }
 
-    pub fn interp(&self, expr: &Expr) -> anyhow::Result<Value> {
+    pub fn add_comment(&mut self, comment: &Comment) -> anyhow::Result<()> {
+        if let Some(name) = &comment.name {
+            if self.comments.contains_key(name) {
+                bail!("duplicate comment: {}", name);
+            }
+            self.comments.insert(name.into(), comment.body.clone());
+        }
+        Ok(())
+    }
+
+    pub fn interp(&mut self, expr: &Expr) -> anyhow::Result<Value> {
         let val = match expr {
             Expr::Block(Block(exprs)) => {
                 // TODO: need to make a new scope for the block, right?
@@ -48,9 +58,19 @@ impl Interpreter {
                 self.interp(last)?
             }
             Expr::Comment(Comment { name: _, body }) => Value::String(body.into()),
-            Expr::Assignment(Assignment { name, expr }) => {
+            Expr::Assignment(Assignment { r#ref, expr }) => {
                 let val = self.interp(expr)?;
-                self.scope.borrow_mut().0.insert(name.into(), val.clone());
+                match r#ref {
+                    Ref::CommentRef(comment_name) => {
+                        let comment = self.comments.get_mut(comment_name).ok_or_else(|| {
+                            anyhow!("couldn't find comment with name {}", comment_name)
+                        })?;
+                        *comment = val.as_str()?.into();
+                    }
+                    Ref::VarRef(name) => {
+                        self.scope.borrow_mut().0.insert(name.into(), val.clone());
+                    }
+                }
                 val
             }
             Expr::IntLiteral(n) => Value::Int(*n),
@@ -142,6 +162,13 @@ impl Value {
         match self {
             Value::Bool(b) => Ok(*b),
             otherwise => bail!("{:?} is not a bool", otherwise),
+        }
+    }
+
+    fn as_str(&self) -> anyhow::Result<&str> {
+        match self {
+            Value::String(s) => Ok(s),
+            otherwise => bail!("{:?} is not a String", otherwise),
         }
     }
 }

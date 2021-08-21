@@ -1,6 +1,6 @@
 #![feature(exclusive_range_pattern)]
 
-use crate::parser::Expr;
+use crate::parser::{find_comments, Expr};
 use interp::Interpreter;
 
 mod interp;
@@ -18,6 +18,8 @@ let mystring = // hello
 // TODO: can't set mynum to 0
 let mynum = 1
 
+let #header = // here u go
+
 // this is a different comment
 add(mynum, mynum)
 
@@ -26,12 +28,17 @@ add(mynum, mynum)
 // }
 "#;
     let program = parser::parser::program(input)?;
-    let assembled = reassemble::assemble_program(&program);
-    println!("{}", assembled);
 
-    let interp = Interpreter::new();
-    let block = Expr::Block(program.block);
+    let mut interp = Interpreter::new();
+    for comment in find_comments(&program) {
+        interp.add_comment(comment)?;
+    }
+
+    let block = Expr::Block(program.block.clone());
     interp.interp(&block)?;
+
+    let assembled = reassemble::output_code(&program);
+    println!("{}", assembled);
 
     Ok(())
 }

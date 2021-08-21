@@ -1,6 +1,6 @@
 use crate::parser::{Assignment, Comment, Expr, FunctionCall, Program, Ref, While};
 
-pub fn assemble_program(program: &Program) -> String {
+pub fn output_code(program: &Program) -> String {
     let mut assembled = String::new();
     assemble_expr(&mut assembled, &Expr::Block(program.block.clone()));
     assembled
@@ -31,9 +31,9 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
                 }
             }
         }
-        Expr::Assignment(Assignment { name, expr }) => {
+        Expr::Assignment(Assignment { r#ref, expr }) => {
             assembled.push_str("let ");
-            assembled.push_str(name);
+            assemble_ref(r#ref, assembled);
             assembled.push_str(" = ");
             assemble_expr(assembled, expr);
         }
