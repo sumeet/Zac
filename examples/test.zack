@@ -1,0 +1,20 @@
+// #header
+// yo
+//
+// this is the continuation
+let mystring = // hello
+
+// TODO: can't set mynum to 0
+let mynum = 1
+
+let #header = // here u go
+// and this is more
+
+// this is a different comment
+// and the continuation
+add(mynum, mynum)
+
+// while(1) {
+//   let x = 123
+// }
+
