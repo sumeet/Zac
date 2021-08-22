@@ -19,14 +19,14 @@ cargo install --path .
 ```
 
 ### How To Run
-As an example, open [`examples/hello.zac`](examples/hello.zac) in your editor.
+As an example, open [examples/hello.zac](examples/hello.zac) in your editor.
 
 ### More examples
 - [GoL.zac](examples/GoL.zac)
 - [fib.zac](examples/fib.zac)
 - [hello.zac](examples/fib.zac)
 
-#### Syntax Highlighting
+#### It's Better With Syntax Highlighting
 If you're using Vim, there's a [syntax file](syntax_highlighting/) in the repo. Put this in your `~/.vim/syntax` directory, or `~/.config/nvim/syntax` if you're using Neovim, and follow the instructions at the top of the file.
 
 
