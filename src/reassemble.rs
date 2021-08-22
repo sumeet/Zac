@@ -20,7 +20,6 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
             }
         }
         Expr::Comment(Comment { name, body }) => {
-            dbg!(name, body);
             if let Some(name) = name {
                 assembled.push_str("// #");
                 assembled.push_str(name);
