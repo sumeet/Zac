@@ -5,4 +5,4 @@ An interactive scripting language where you can read and modify code comments as
 
 ### Status
 
-Proof-of-concept only developed in the first [langjam/langjam](Lang Jam), a competition to design a programming language around the theme `first-class comments`.
+Proof-of-concept only developed in the first [Lang Jam](langjam/langjam), a competition to design a programming language around the theme `first-class comments`.
