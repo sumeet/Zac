@@ -1,21 +1,6 @@
 // The one and only Conway's Game of Life
-
-// #help
-// Help for the Zac Programming Language (https://github.com/sumeet/Zac)
 //
-// Define a comment with the first line set to an identifier (like #help) and it will be a first-class
-// string usable inside of your program. You can read from it, and if you write to it, the change will
-// be reflected inside the source file.
-//
-// Builtin functions:
-//  add    cat          chr  eq    get_coord  gt  length  lt  mul  not 
-//  print  replace_chr  set  show                                   
-//
-// Available variables
-//  counter  false  pipe  space  star  true  width 
-//
-// Available comments
-//  #cord  #grid  #grid_flat  #help  #length  #offset  #width
+// Play below by running: zac GoL.zac
 
 // #grid
 // |     *****               *    |
@@ -39,13 +24,7 @@ let width = 1
 while (not(eq(#grid(width), pipe))) {
   let width = add(width, 1)
 }
-
 let width = add(width, -1)
-
-let #width = show(width)// #width
-// 30
-
-let counter = 0
 
 defn get_coord(x, y) {
   // 1 for the first left bar
@@ -56,39 +35,29 @@ defn get_coord(x, y) {
   }
   let offset = add(offset, mul(y, width))
   let offset = add(offset, x)
-  #grid(offset)
-}
-
-let #cord = show(get_coord(4, 5))// #cord
-// *
-
-defn length(s) {
-  let i = 0
-  while (not(eq(s(i), false))) {
-    let i = add(i, 1)
+  let char = #grid(offset)
+  let ret = 0
+  if (eq(char, star)) {
+    let ret = 1
   }
-  add(i, 1)
+  ret
 }
 
-
-let #length = show(length(#grid))// #length
-// 396
-
-defn replace_chr(s, from, to) {
-  let len = length(s)
-  let i = 0
-  while (lt(i, len)) {
-    if (eq(s(i), from)) {
-      let s = set(s, i, to)
+defn neighbors(x, y) {
+  let num_alive_neighbs = 0
+  let dx = -1
+  while (lt(dx, 2)) {
+    let dy = -1
+    while (lt(dy, 2)) {
+      if (not(and(eq(dx, 0), eq(dy, 0)))) {
+        let new_x = add(dx, x)
+        let new_y = add(dy, y)
+        let num_alive_neighbs = add(num_alive_neighbs, get_coord(new_x, new_y))
+      }
+      let dy = add(dy, 1)
     }
-
-    let i = add(i, 1)
+    let dx = add(dx, 1)
   }
-  s
+  num_alive_neighbs
 }
-
-let #grid_flat = replace_chr(#grid, chr(10), space)// #grid_flat
-// |     *****               *    | |  * *** **       *   *        | |     ** **    *    ***        | |   * ** *                     | |     ** *    *     *     *    | |     ** *        *            | |     ** *    *                | |     ** *             *       | |     ** **        *  *        | |     ** **                    | |     ** **              *     | |     *****        *           |
-
-// #offset
 

@@ -37,6 +37,7 @@ impl Interpreter {
         scope.insert("lt".into(), Value::Function(Box::new(LtBuiltin {})));
         scope.insert("gt".into(), Value::Function(Box::new(GtBuiltin {})));
         scope.insert("not".into(), Value::Function(Box::new(NotBuiltin {})));
+        scope.insert("and".into(), Value::Function(Box::new(AndBuiltin {})));
         scope.insert("print".into(), Value::Function(Box::new(PrintBuiltin {})));
         scope.insert("show".into(), Value::Function(Box::new(ShowBuiltin {})));
         scope.insert("chr".into(), Value::Function(Box::new(ChrBuiltin {})));
@@ -114,10 +115,14 @@ impl Interpreter {
                     Value::Function(func) => func.call(self, &args)?,
                     Value::String(s) => {
                         let index = get_arg(&args, 0)?.as_num()?;
-                        s.chars()
-                            .nth(index as usize)
-                            .map(|c| Value::String(c.into()))
-                            .unwrap_or(Value::Bool(false))
+                        if index < 0 {
+                            Value::Bool(false)
+                        } else {
+                            s.chars()
+                                .nth(index as usize)
+                                .map(|c| Value::String(c.into()))
+                                .unwrap_or(Value::Bool(false))
+                        }
                     }
                     Value::Bool(_) | Value::Map(_) | Value::Int(_) => {
                         bail!("tried to call a {:?}", var)
@@ -343,6 +348,7 @@ impl Function for LtBuiltin {
     fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
         let lhs = get_arg(args, 0)?.as_num()?;
         let rhs = get_arg(args, 1)?.as_num()?;
+        //println!("{:?} < {:?}", lhs, rhs);
         Ok(Value::Bool(lhs < rhs))
     }
 }
@@ -353,6 +359,16 @@ impl Function for NotBuiltin {
     fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
         let val = get_arg(args, 0)?.as_bool()?;
         Ok(Value::Bool(!val))
+    }
+}
+
+#[derive(Debug, Clone, DynPartialEq, PartialEq)]
+struct AndBuiltin {}
+impl Function for AndBuiltin {
+    fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+        let lhs = get_arg(args, 0)?.as_bool()?;
+        let rhs = get_arg(args, 1)?.as_bool()?;
+        Ok(Value::Bool(lhs && rhs))
     }
 }
 
