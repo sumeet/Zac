@@ -8,17 +8,17 @@
 // be reflected inside the source file.
 //
 // Builtin functions:
-//  add  calc_width  cat  chr  eq  not  print  show 
+//  add  cat  chr  eq  get_coord  gt  mul  not  print  show 
 //
 // Available variables
 //  counter  false  pipe  true  width 
 //
 // Available comments
-//  #grid  #help  #width
+//  #cord  #grid  #help  #offset  #width
 
 // #grid
 // |     *****               *    |
-// |  *  ** **       *   *        |
+// |  * *** **       *   *        |
 // |     ** **    *    ***        |
 // |   * ** *                     |
 // |     ** *    *     *     *    |
@@ -37,12 +37,30 @@ while (not(eq(#grid(width), pipe))) {
   let width = add(width, 1)
 }
 
+let width = add(width, -1)
+
 let #width = show(width)// #width
-// 31
+// 30
 
 let counter = 0
 
 defn get_coord(x, y) {
   // 1 for each left bar
-  let left_bar_offset = add(x, 1);
+  let offset = add(1, y)
+  // 1 offset for each right pipe and each newline if y > 0
+  if (gt(y, 0)) {
+    let offset = add(offset, mul(y, 2))
+  }
+  let offset = add(offset, mul(y, width))
+  let offset = add(offset, x)
+  #grid(offset)
+  offset
 }
+
+// #grid
+
+// #offset
+
+let #cord = show(get_coord(2, 1))// #cord
+// 36
+

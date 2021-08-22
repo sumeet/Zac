@@ -31,7 +31,9 @@ impl Interpreter {
     pub fn new() -> Self {
         let mut scope = Scope::new(None);
         scope.insert("add".into(), Value::Function(Box::new(AddBuiltin {})));
+        scope.insert("mul".into(), Value::Function(Box::new(MulBuiltin {})));
         scope.insert("eq".into(), Value::Function(Box::new(EqBuiltin {})));
+        scope.insert("gt".into(), Value::Function(Box::new(GtBuiltin {})));
         scope.insert("not".into(), Value::Function(Box::new(NotBuiltin {})));
         scope.insert("print".into(), Value::Function(Box::new(PrintBuiltin {})));
         scope.insert("show".into(), Value::Function(Box::new(ShowBuiltin {})));
@@ -281,6 +283,16 @@ impl Function for AddBuiltin {
     }
 }
 
+#[derive(Debug, Clone, DynPartialEq, PartialEq)]
+struct MulBuiltin {}
+impl Function for MulBuiltin {
+    fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+        let lhs = get_arg(args, 0)?.as_num()?;
+        let rhs = get_arg(args, 1)?.as_num()?;
+        Ok(Value::Int(lhs * rhs))
+    }
+}
+
 fn get_arg(args: &[Value], n: usize) -> anyhow::Result<&Value> {
     args.get(n).ok_or_else(|| {
         anyhow!(
@@ -298,6 +310,16 @@ impl Function for EqBuiltin {
         let lhs = get_arg(args, 0)?;
         let rhs = get_arg(args, 1)?;
         Ok(Value::Bool(lhs == rhs))
+    }
+}
+
+#[derive(Debug, Clone, DynPartialEq, PartialEq)]
+struct GtBuiltin {}
+impl Function for GtBuiltin {
+    fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+        let lhs = get_arg(args, 0)?.as_num()?;
+        let rhs = get_arg(args, 1)?.as_num()?;
+        Ok(Value::Bool(lhs > rhs))
     }
 }
 
