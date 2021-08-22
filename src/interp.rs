@@ -434,9 +434,9 @@ impl Function for ShowBuiltin {
 
 const WELCOME_TEXT: &str = r#"Help for the Zac Programming Language (https://github.com/sumeet/Zac)
 
-Define a comment with the first line set to an identifier (like #help) and it will be a first-class
-string usable inside of your program. You can read from it, and if you write to it, the change will
-be reflected inside the source file."#;
+Define a comment with the first line set to an identifier (like #help) and it
+will be a string usable inside of your program. You can read from it, and if
+you write to it, the change will be reflected inside the source file."#;
 
 const CHUNK_SIZE: usize = 10;
 

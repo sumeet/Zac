@@ -17,9 +17,6 @@
 let counter = 0
 let end = 10
 
-// TODO: it would be BALLER if there was string interpolation
-// let #fib = // Here are the first ${end} few numbers:
-
 let #fib = // Here are the first few numbers:
 //
 
