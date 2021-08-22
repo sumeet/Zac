@@ -1,0 +1,25 @@
+// The one and only Conway's Game of Life
+
+// #help
+// Help for the Zac Programming Language (https://github.com/sumeet/Zac)
+//
+// Define a comment with the first line set to an identifier (like #help) and it will be a first-class
+// string usable inside of your program. You can read from it, and if you write to it, the change will
+// be reflected inside the source file.
+//
+// Builtin functions:
+//  add  cat  chr  eq  not  print  show 
+//
+// Available variables
+//  counter  false  height  true  width 
+//
+// Available comments
+//  #help  #grid
+
+// #grid
+
+
+let width = 50
+let height = 50
+
+let counter = 0

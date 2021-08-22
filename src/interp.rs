@@ -1,6 +1,6 @@
 use anyhow::{anyhow, bail};
 use dyn_partial_eq::*;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::parser::{Assignment, Comment, Expr, FunctionCall, If, Ref, While};
 use dyn_clone::DynClone;
@@ -18,6 +18,7 @@ pub struct Interpreter {
     comments: HashMap<String, String>,
 }
 
+const BUILTIN_COMMENTS: &[&str; 1] = &["#help"];
 pub fn builtin_comment(interpreter: &Interpreter, name: &str) -> Option<String> {
     match name {
         "help" => Some(generate_help_text(interpreter)),
@@ -314,17 +315,26 @@ fn generate_help_text(interp: &Interpreter) -> String {
             variable_names.push(name.to_string())
         }
     }
+    let mut comment_names = HashSet::new();
+    for comment in BUILTIN_COMMENTS {
+        comment_names.insert(comment.to_string());
+    }
+    for comment in interp.comments.keys() {
+        comment_names.insert(format!("#{}", comment));
+    }
 
     let mut txt = String::new();
     txt.push_str(WELCOME_TEXT);
     txt.push_str("\n\nBuiltin functions:\n");
-    txt.push_str(&tableize(&mut function_names).to_string());
+    txt.push_str(&tableize(&function_names).to_string());
     txt.push_str("\nAvailable variables\n");
-    txt.push_str(&tableize(&mut variable_names).to_string());
+    txt.push_str(&tableize(&variable_names).to_string());
+    txt.push_str("\nAvailable comments\n");
+    txt.push_str(&tableize(&comment_names.into_iter().collect()).to_string());
     txt.trim_end().into()
 }
 
-fn tableize(function_names: &mut Vec<String>) -> Table {
+fn tableize(function_names: &Vec<String>) -> Table {
     let mut table = Table::new();
     table.set_format(*FORMAT_CLEAN);
     for chunk in &function_names.into_iter().chunks(CHUNK_SIZE) {
