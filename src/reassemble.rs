@@ -1,4 +1,5 @@
 use crate::parser::{Assignment, BlockEl, Comment, Expr, FunctionCall, Program, Ref, While};
+use itertools::Itertools;
 
 pub fn output_code(program: &Program) -> String {
     let mut assembled = String::new();
@@ -19,19 +20,25 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
             }
         }
         Expr::Comment(Comment { name, body }) => {
+            dbg!(name, body);
             if let Some(name) = name {
                 assembled.push_str("// #");
                 assembled.push_str(name);
-                assembled.push_str("\n");
+
+                if body.is_empty() {
+                    return;
+                }
+            }
+
+            if body.is_empty() {
+                assembled.push_str("//");
+                return;
             }
 
             let mut lines = body.lines().peekable();
             while let Some(line) = lines.next() {
-                assembled.push_str("// ");
+                assembled.push_str("\n// ");
                 assembled.push_str(line);
-                if lines.peek().is_some() {
-                    assembled.push_str("\n");
-                }
             }
         }
         Expr::Assignment(Assignment { r#ref, expr }) => {
@@ -58,7 +65,22 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
             assembled.push_str("while (");
             assemble_expr(assembled, cond);
             assembled.push_str(") {\n");
-            assemble_expr(assembled, &Expr::Block(block.clone()));
+
+            let mut inner = String::new();
+            assemble_expr(&mut inner, &Expr::Block(block.clone()));
+            let inner = inner
+                .lines()
+                .map(|line| {
+                    if line.trim().is_empty() {
+                        line.to_string()
+                    } else {
+                        // indentation
+                        format!("  {}", line)
+                    }
+                })
+                .join("\n");
+            assembled.push_str(&inner);
+
             assembled.push_str("\n}");
         }
     }

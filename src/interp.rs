@@ -17,18 +17,13 @@ pub struct Interpreter {
 impl Interpreter {
     pub fn new() -> Self {
         let mut scope = Scope::new();
-        scope
-            .0
-            .insert("add".into(), Value::Function(Box::new(AddBuiltin {})));
-        scope
-            .0
-            .insert("eq".into(), Value::Function(Box::new(EqBuiltin {})));
-        scope
-            .0
-            .insert("not".into(), Value::Function(Box::new(NotBuiltin {})));
-        scope
-            .0
-            .insert("print".into(), Value::Function(Box::new(PrintBuiltin {})));
+        let map = &mut scope.0;
+        map.insert("add".into(), Value::Function(Box::new(AddBuiltin {})));
+        map.insert("eq".into(), Value::Function(Box::new(EqBuiltin {})));
+        map.insert("not".into(), Value::Function(Box::new(NotBuiltin {})));
+        map.insert("print".into(), Value::Function(Box::new(PrintBuiltin {})));
+        map.insert("true".into(), Value::Bool(true));
+        map.insert("false".into(), Value::Bool(false));
         Self {
             scope: Rc::new(RefCell::new(scope)),
             comments: HashMap::new(),

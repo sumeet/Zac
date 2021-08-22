@@ -1,19 +1,30 @@
 // #header
-// yo
-//
-// this is the continuation
+// here u go
+// 
+// and this is more
 let mystring = // hello
 
-// TODO: can't set mynum to 0
-let mynum = 1
+// TODO: can't set counter to 0
+let counter = 1
 
 let #header = // here u go
+// 
 // and this is more
 
-// this is a different comment
-// and the continuation
-// add(mynum, mynum)
+let #fib_output = //
+let a = 1
+let b = 1
 
-while (1) {
-  let x = 123
+while (not(eq(counter, 10))) {
+
+  let temp  = a + b;
+  let a = b
+  let b = temp
+
+  push_str(#fib_output
+
+
+  let counter = add(counter, 1)
 }
+
+// #fib_output
