@@ -20,6 +20,7 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
             }
         }
         Expr::Comment(Comment { name, body }) => {
+            dbg!(name, body);
             if let Some(name) = name {
                 assembled.push_str("// #");
                 assembled.push_str(name);
@@ -27,6 +28,8 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
                 if body.is_empty() {
                     return;
                 }
+
+                assembled.push_str("\n");
             }
 
             if body.is_empty() {
@@ -36,8 +39,17 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
 
             let mut lines = body.lines().peekable();
             while let Some(line) = lines.next() {
-                assembled.push_str("\n// ");
-                assembled.push_str(line);
+                // means there's a newline by itself
+                if line.is_empty() {
+                    assembled.push_str("//\n//");
+                } else {
+                    assembled.push_str("// ");
+                    assembled.push_str(line);
+                }
+
+                if let Some(_) = lines.peek() {
+                    assembled.push_str("\n");
+                }
             }
         }
         Expr::Assignment(Assignment { r#ref, expr }) => {

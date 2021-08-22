@@ -22,6 +22,8 @@ impl Interpreter {
         map.insert("eq".into(), Value::Function(Box::new(EqBuiltin {})));
         map.insert("not".into(), Value::Function(Box::new(NotBuiltin {})));
         map.insert("print".into(), Value::Function(Box::new(PrintBuiltin {})));
+        map.insert("show".into(), Value::Function(Box::new(ShowBuiltin {})));
+        map.insert("cat".into(), Value::Function(Box::new(CatBuiltin {})));
         map.insert("true".into(), Value::Bool(true));
         map.insert("false".into(), Value::Bool(false));
         Self {
@@ -210,7 +212,6 @@ impl Function for NotBuiltin {
     }
 }
 
-// TODO: get rid of print because we'll be doing it with comments
 #[derive(Debug, Clone, DynPartialEq, PartialEq)]
 struct PrintBuiltin {}
 impl Function for PrintBuiltin {
@@ -218,5 +219,35 @@ impl Function for PrintBuiltin {
         let val = get_arg(args, 0)?;
         println!("{:?}", val);
         Ok(val.clone())
+    }
+}
+
+#[derive(Debug, Clone, DynPartialEq, PartialEq)]
+struct CatBuiltin {}
+impl Function for CatBuiltin {
+    fn call(&self, _: &Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+        let mut acc = String::new();
+        for arg in args {
+            let str = arg.as_str()?;
+            acc.push_str(str);
+        }
+        Ok(Value::String(acc))
+    }
+}
+
+#[derive(Debug, Clone, DynPartialEq, PartialEq)]
+struct ShowBuiltin {}
+impl Function for ShowBuiltin {
+    fn call(&self, _: &Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+        let val = get_arg(args, 0)?;
+        let s = match val {
+            Value::String(s) => s.clone(),
+            Value::Map(m) => format!("{:?}", m),
+            Value::Int(n) => n.to_string(),
+            Value::Function(_) => "<function>".to_string(),
+            Value::Bool(true) => "true".to_string(),
+            Value::Bool(false) => "false".to_string(),
+        };
+        Ok(Value::String(s))
     }
 }
