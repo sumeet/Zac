@@ -22,7 +22,6 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
             if let Some(name) = name {
                 assembled.push_str("// #");
                 assembled.push_str(name);
-                assembled.push_str(":");
                 assembled.push_str("\n");
             }
 
