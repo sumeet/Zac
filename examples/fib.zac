@@ -14,9 +14,6 @@
 // 89
 //
 
-let newline = //
-//
-
 let counter = 0
 let end = 10
 
@@ -36,5 +33,5 @@ while (not(eq(counter, end))) {
   let a = b
   let b = temp
 
-  let #fib = cat(#fib, show(a), newline)
+  let #fib = cat(#fib, show(a), chr(10))
 }

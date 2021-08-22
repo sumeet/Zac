@@ -7,6 +7,7 @@ use dyn_clone::DynClone;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
+use std::str::from_utf8;
 
 #[derive(Debug)]
 pub struct Interpreter {
@@ -23,6 +24,7 @@ impl Interpreter {
         map.insert("not".into(), Value::Function(Box::new(NotBuiltin {})));
         map.insert("print".into(), Value::Function(Box::new(PrintBuiltin {})));
         map.insert("show".into(), Value::Function(Box::new(ShowBuiltin {})));
+        map.insert("chr".into(), Value::Function(Box::new(ChrBuiltin {})));
         map.insert("cat".into(), Value::Function(Box::new(CatBuiltin {})));
         map.insert("true".into(), Value::Bool(true));
         map.insert("false".into(), Value::Bool(false));
@@ -75,14 +77,28 @@ impl Interpreter {
             }
             Expr::IntLiteral(n) => Value::Int(*n),
             Expr::Ref(r#ref) => self.get_ref(r#ref)?,
+            // XXX:
+            // this is lols but we'll use func call syntax to index into strings and maps
+            // (don't have lists yet)
             Expr::FunctionCall(FunctionCall { r#ref, args }) => {
                 let var = self.get_ref(r#ref)?;
-                let func = var.as_func()?;
                 let args = args
                     .iter()
                     .map(|e| self.interp(e))
                     .collect::<anyhow::Result<Vec<_>>>()?;
-                func.call(self, &args)?
+                match var {
+                    Value::Function(func) => func.call(self, &args)?,
+                    Value::String(s) => {
+                        let index = get_arg(&args, 0)?.as_num()?;
+                        s.chars()
+                            .nth(index as usize)
+                            .map(|c| Value::String(c.into()))
+                            .unwrap_or(Value::Bool(false))
+                    }
+                    Value::Bool(_) | Value::Map(_) | Value::Int(_) => {
+                        bail!("tried to call a {:?}", var)
+                    }
+                }
             }
             Expr::While(While { cond, block }) => {
                 // TODO: need to make aa new scope for a new block
@@ -152,13 +168,6 @@ pub enum Value {
 }
 
 impl Value {
-    fn as_func(&self) -> anyhow::Result<&dyn Function> {
-        match self {
-            Value::Function(func) => Ok(func.as_ref()),
-            otherwise => bail!("{:?} is not a function", otherwise),
-        }
-    }
-
     fn as_num(&self) -> anyhow::Result<i128> {
         match self {
             Value::Int(i) => Ok(*i),
@@ -240,6 +249,15 @@ impl Function for CatBuiltin {
             acc.push_str(str);
         }
         Ok(Value::String(acc))
+    }
+}
+
+#[derive(Debug, Clone, DynPartialEq, PartialEq)]
+struct ChrBuiltin {}
+impl Function for ChrBuiltin {
+    fn call(&self, _: &Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+        let val = get_arg(args, 0)?.as_num()?.to_le_bytes()[0];
+        Ok(Value::String(from_utf8(&[val])?.to_string()))
     }
 }
 
