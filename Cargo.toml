@@ -3,6 +3,8 @@ cargo-features = ["edition2021"]
 name = "zac"
 version = "0.1.0"
 edition = "2021"
+description = "Interactive scripting language where you can edit the comments"
+license = "Free"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
