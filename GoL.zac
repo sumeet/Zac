@@ -8,13 +8,14 @@
 // be reflected inside the source file.
 //
 // Builtin functions:
-//  add  cat  chr  eq  get_coord  gt  mul  not  print  show 
+//  add    cat          chr  eq    get_coord  gt  length  lt  mul  not 
+//  print  replace_chr  set  show                                   
 //
 // Available variables
-//  counter  false  pipe  true  width 
+//  counter  false  pipe  space  star  true  width 
 //
 // Available comments
-//  #cord  #grid  #help  #offset  #width
+//  #cord  #grid  #grid_flat  #help  #length  #offset  #width
 
 // #grid
 // |     *****               *    |
@@ -31,6 +32,8 @@
 // |     *****        *           |
 
 let pipe = // |
+let star = // *
+let space = chr(32)
 
 let width = 1
 while (not(eq(#grid(width), pipe))) {
@@ -45,22 +48,47 @@ let #width = show(width)// #width
 let counter = 0
 
 defn get_coord(x, y) {
-  // 1 for each left bar
-  let offset = add(1, y)
-  // 1 offset for each right pipe and each newline if y > 0
+  // 1 for the first left bar
+  let offset = 1
+  // 1 offset for each left, right pipe and each newline if y > 0
   if (gt(y, 0)) {
-    let offset = add(offset, mul(y, 2))
+    let offset = add(offset, mul(y, 3))
   }
   let offset = add(offset, mul(y, width))
   let offset = add(offset, x)
   #grid(offset)
-  offset
 }
 
-// #grid
+let #cord = show(get_coord(4, 5))// #cord
+// *
+
+defn length(s) {
+  let i = 0
+  while (not(eq(s(i), false))) {
+    let i = add(i, 1)
+  }
+  add(i, 1)
+}
+
+
+let #length = show(length(#grid))// #length
+// 396
+
+defn replace_chr(s, from, to) {
+  let len = length(s)
+  let i = 0
+  while (lt(i, len)) {
+    if (eq(s(i), from)) {
+      let s = set(s, i, to)
+    }
+
+    let i = add(i, 1)
+  }
+  s
+}
+
+let #grid_flat = replace_chr(#grid, chr(10), space)// #grid_flat
+// |     *****               *    | |  * *** **       *   *        | |     ** **    *    ***        | |   * ** *                     | |     ** *    *     *     *    | |     ** *        *            | |     ** *    *                | |     ** *             *       | |     ** **        *  *        | |     ** **                    | |     ** **              *     | |     *****        *           |
 
 // #offset
-
-let #cord = show(get_coord(2, 1))// #cord
-// 36
 

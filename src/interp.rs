@@ -30,9 +30,11 @@ pub fn builtin_comment(interpreter: &Interpreter, name: &str) -> Option<String> 
 impl Interpreter {
     pub fn new() -> Self {
         let mut scope = Scope::new(None);
+        scope.insert("set".into(), Value::Function(Box::new(SetBuiltin {})));
         scope.insert("add".into(), Value::Function(Box::new(AddBuiltin {})));
         scope.insert("mul".into(), Value::Function(Box::new(MulBuiltin {})));
         scope.insert("eq".into(), Value::Function(Box::new(EqBuiltin {})));
+        scope.insert("lt".into(), Value::Function(Box::new(LtBuiltin {})));
         scope.insert("gt".into(), Value::Function(Box::new(GtBuiltin {})));
         scope.insert("not".into(), Value::Function(Box::new(NotBuiltin {})));
         scope.insert("print".into(), Value::Function(Box::new(PrintBuiltin {})));
@@ -274,6 +276,18 @@ impl Value {
 }
 
 #[derive(Debug, Clone, DynPartialEq, PartialEq)]
+struct SetBuiltin {}
+impl Function for SetBuiltin {
+    fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+        let str = get_arg(args, 0)?.as_str()?;
+        let index = get_arg(args, 1)?.as_num()?;
+        let new = get_arg(args, 2)?.as_str()?;
+        let (left, right) = str.split_at(index as usize);
+        Ok(Value::String(format!("{}{}{}", left, new, &right[1..])))
+    }
+}
+
+#[derive(Debug, Clone, DynPartialEq, PartialEq)]
 struct AddBuiltin {}
 impl Function for AddBuiltin {
     fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
@@ -320,6 +334,16 @@ impl Function for GtBuiltin {
         let lhs = get_arg(args, 0)?.as_num()?;
         let rhs = get_arg(args, 1)?.as_num()?;
         Ok(Value::Bool(lhs > rhs))
+    }
+}
+
+#[derive(Debug, Clone, DynPartialEq, PartialEq)]
+struct LtBuiltin {}
+impl Function for LtBuiltin {
+    fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+        let lhs = get_arg(args, 0)?.as_num()?;
+        let rhs = get_arg(args, 1)?.as_num()?;
+        Ok(Value::Bool(lhs < rhs))
     }
 }
 
