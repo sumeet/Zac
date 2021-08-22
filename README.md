@@ -1,7 +1,7 @@
 ## Zac Programming Language
 An interactive scripting language where you can read and modify code comments as if they were regular strings. Add and view text-based visualizations and debugging information inside your source code file.
 
-[Try it in your browser right away](https://sumeet.github.io/Zac/index.html). The experience is better locally, read on!
+[Try it in your browser right away](https://sumeet.github.io/Zac/). The experience is better locally, read on!
 
 ![GoL](.README_assets/GoL.gif)
 
