@@ -2,6 +2,7 @@
 #![feature(map_try_insert)]
 #![feature(in_band_lifetimes)]
 
+use crate::interp::builtin_comment;
 use crate::parser::{find_comments_mut, Expr, Program};
 use anyhow::anyhow;
 use interp::Interpreter;
@@ -56,7 +57,11 @@ fn replace_comments_in_source_code(
         let code_comment = comments
             .get_mut(name)
             .ok_or_else(|| anyhow!("original code didn't contain comment {}", name))?;
-        code_comment.body = body.to_string();
+        code_comment.body = if let Some(builtin) = builtin_comment(interp, name) {
+            builtin.to_string()
+        } else {
+            body.to_string()
+        };
     }
     Ok(())
 }

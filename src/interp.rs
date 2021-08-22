@@ -4,6 +4,9 @@ use std::collections::{BTreeMap, HashMap};
 
 use crate::parser::{Assignment, Comment, Expr, FunctionCall, If, Ref, While};
 use dyn_clone::DynClone;
+use itertools::Itertools;
+use prettytable::format::consts::FORMAT_CLEAN;
+use prettytable::{Cell, Row, Table};
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -13,6 +16,13 @@ use std::str::from_utf8;
 pub struct Interpreter {
     scope: Rc<RefCell<Scope>>,
     comments: HashMap<String, String>,
+}
+
+pub fn builtin_comment(interpreter: &Interpreter, name: &str) -> Option<String> {
+    match name {
+        "help" => Some(generate_help_text(interpreter)),
+        _ => None,
+    }
 }
 
 impl Interpreter {
@@ -28,6 +38,7 @@ impl Interpreter {
         map.insert("cat".into(), Value::Function(Box::new(CatBuiltin {})));
         map.insert("true".into(), Value::Bool(true));
         map.insert("false".into(), Value::Bool(false));
+
         Self {
             scope: Rc::new(RefCell::new(scope)),
             comments: HashMap::new(),
@@ -153,7 +164,7 @@ impl Scope {
 
 #[dyn_partial_eq]
 pub trait Function: Debug + DynClone {
-    fn call(&self, interp: &Interpreter, args: &[Value]) -> anyhow::Result<Value>;
+    fn call(&self, interp: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value>;
 }
 
 dyn_clone::clone_trait_object!(Function);
@@ -168,6 +179,13 @@ pub enum Value {
 }
 
 impl Value {
+    fn as_func(&self) -> anyhow::Result<&dyn Function> {
+        match self {
+            Value::Function(f) => Ok(f.as_ref()),
+            otherwise => bail!("{:?} is not a function", otherwise),
+        }
+    }
+
     fn as_num(&self) -> anyhow::Result<i128> {
         match self {
             Value::Int(i) => Ok(*i),
@@ -193,7 +211,7 @@ impl Value {
 #[derive(Debug, Clone, DynPartialEq, PartialEq)]
 struct AddBuiltin {}
 impl Function for AddBuiltin {
-    fn call(&self, _: &Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+    fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
         let lhs = get_arg(args, 0)?.as_num()?;
         let rhs = get_arg(args, 1)?.as_num()?;
         Ok(Value::Int(lhs + rhs))
@@ -213,7 +231,7 @@ fn get_arg(args: &[Value], n: usize) -> anyhow::Result<&Value> {
 #[derive(Debug, Clone, DynPartialEq, PartialEq)]
 struct EqBuiltin {}
 impl Function for EqBuiltin {
-    fn call(&self, _: &Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+    fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
         let lhs = get_arg(args, 0)?;
         let rhs = get_arg(args, 1)?;
         Ok(Value::Bool(lhs == rhs))
@@ -223,7 +241,7 @@ impl Function for EqBuiltin {
 #[derive(Debug, Clone, DynPartialEq, PartialEq)]
 struct NotBuiltin {}
 impl Function for NotBuiltin {
-    fn call(&self, _: &Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+    fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
         let val = get_arg(args, 0)?.as_bool()?;
         Ok(Value::Bool(!val))
     }
@@ -232,7 +250,7 @@ impl Function for NotBuiltin {
 #[derive(Debug, Clone, DynPartialEq, PartialEq)]
 struct PrintBuiltin {}
 impl Function for PrintBuiltin {
-    fn call(&self, _: &Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+    fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
         let val = get_arg(args, 0)?;
         println!("{:?}", val);
         Ok(val.clone())
@@ -242,7 +260,7 @@ impl Function for PrintBuiltin {
 #[derive(Debug, Clone, DynPartialEq, PartialEq)]
 struct CatBuiltin {}
 impl Function for CatBuiltin {
-    fn call(&self, _: &Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+    fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
         let mut acc = String::new();
         for arg in args {
             let str = arg.as_str()?;
@@ -255,7 +273,7 @@ impl Function for CatBuiltin {
 #[derive(Debug, Clone, DynPartialEq, PartialEq)]
 struct ChrBuiltin {}
 impl Function for ChrBuiltin {
-    fn call(&self, _: &Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+    fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
         let val = get_arg(args, 0)?.as_num()?.to_le_bytes()[0];
         Ok(Value::String(from_utf8(&[val])?.to_string()))
     }
@@ -264,7 +282,7 @@ impl Function for ChrBuiltin {
 #[derive(Debug, Clone, DynPartialEq, PartialEq)]
 struct ShowBuiltin {}
 impl Function for ShowBuiltin {
-    fn call(&self, _: &Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+    fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
         let val = get_arg(args, 0)?;
         let s = match val {
             Value::String(s) => s.clone(),
@@ -276,4 +294,43 @@ impl Function for ShowBuiltin {
         };
         Ok(Value::String(s))
     }
+}
+
+const WELCOME_TEXT: &str = r#"Help for the Zac Programming Language (https://github.com/sumeet/Zac)
+
+Define a comment with the first line set to an identifier (like #help) and it will be a first-class
+string usable inside of your program. You can read from it, and if you write to it, the change will
+be reflected inside the source file."#;
+
+const CHUNK_SIZE: usize = 10;
+
+fn generate_help_text(interp: &Interpreter) -> String {
+    let mut function_names = vec![];
+    let mut variable_names = vec![];
+    for (name, builtin) in &interp.scope.borrow().0 {
+        if builtin.as_func().is_ok() {
+            function_names.push(name.to_string());
+        } else {
+            variable_names.push(name.to_string())
+        }
+    }
+
+    let mut txt = String::new();
+    txt.push_str(WELCOME_TEXT);
+    txt.push_str("\n\nBuiltin functions:\n");
+    txt.push_str(&tableize(&mut function_names).to_string());
+    txt.push_str("\nAvailable variables\n");
+    txt.push_str(&tableize(&mut variable_names).to_string());
+    txt.trim_end().into()
+}
+
+fn tableize(function_names: &mut Vec<String>) -> Table {
+    let mut table = Table::new();
+    table.set_format(*FORMAT_CLEAN);
+    for chunk in &function_names.into_iter().chunks(CHUNK_SIZE) {
+        table.add_row(Row::new(
+            chunk.map(|name| Cell::new(name.as_str())).collect(),
+        ));
+    }
+    table
 }
