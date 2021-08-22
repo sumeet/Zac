@@ -15,7 +15,7 @@ syntax keyword zacTodos TODO XXX FIXME NOTE
 
 
 " Language keywords
-syntax keyword zacKeywords let
+syntax keyword zacKeywords let defn
 syntax keyword zacLoopKeywords while if
 
 " Comments

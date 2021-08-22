@@ -1,4 +1,6 @@
-use crate::parser::{Assignment, BlockEl, Comment, Expr, FunctionCall, If, Program, Ref, While};
+use crate::parser::{
+    Assignment, Block, BlockEl, Comment, Expr, FuncDef, FunctionCall, If, Program, Ref, While,
+};
 use itertools::Itertools;
 
 pub fn output_code(program: &Program) -> String {
@@ -77,25 +79,46 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
             });
             assemble_expr(assembled, cond);
             assembled.push_str(") {\n");
-
-            let mut inner = String::new();
-            assemble_expr(&mut inner, &Expr::Block(block.clone()));
-            let inner = inner
-                .lines()
-                .map(|line| {
-                    if line.trim().is_empty() {
-                        line.to_string()
-                    } else {
-                        // indentation
-                        format!("  {}", line)
-                    }
-                })
-                .join("\n");
-            assembled.push_str(&inner);
-
+            assemble_inner_block(assembled, block);
+            assembled.push_str("\n}");
+        }
+        Expr::FuncDef(FuncDef {
+            name,
+            arg_names,
+            block,
+        }) => {
+            assembled.push_str("defn ");
+            assembled.push_str(name);
+            assembled.push_str("(");
+            if let Some((last, init)) = arg_names.split_last() {
+                for arg_name in init {
+                    assembled.push_str(arg_name);
+                    assembled.push_str(", ");
+                }
+                assembled.push_str(last);
+            }
+            assembled.push_str(") {\n");
+            assemble_inner_block(assembled, block);
             assembled.push_str("\n}");
         }
     }
+}
+
+fn assemble_inner_block(assembled: &mut String, block: &Block) {
+    let mut inner = String::new();
+    assemble_expr(&mut inner, &Expr::Block(block.clone()));
+    let inner = inner
+        .lines()
+        .map(|line| {
+            if line.trim().is_empty() {
+                line.to_string()
+            } else {
+                // indentation
+                format!("  {}", line)
+            }
+        })
+        .join("\n");
+    assembled.push_str(&inner);
 }
 
 fn assemble_ref(r#ref: &Ref, assembled: &mut String) {

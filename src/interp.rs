@@ -2,7 +2,8 @@ use anyhow::{anyhow, bail};
 use dyn_partial_eq::*;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use crate::parser::{Assignment, Comment, Expr, FunctionCall, If, Ref, While};
+use crate::parser;
+use crate::parser::{Assignment, Block, Comment, Expr, FunctionCall, If, Ref, While};
 use dyn_clone::DynClone;
 use itertools::Itertools;
 use prettytable::format::consts::FORMAT_CLEAN;
@@ -12,7 +13,7 @@ use std::fmt::Debug;
 use std::rc::Rc;
 use std::str::from_utf8;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Interpreter {
     scope: Rc<RefCell<Scope>>,
     comments: HashMap<String, String>,
@@ -28,22 +29,29 @@ pub fn builtin_comment(interpreter: &Interpreter, name: &str) -> Option<String> 
 
 impl Interpreter {
     pub fn new() -> Self {
-        let mut scope = Scope::new();
-        let map = &mut scope.0;
-        map.insert("add".into(), Value::Function(Box::new(AddBuiltin {})));
-        map.insert("eq".into(), Value::Function(Box::new(EqBuiltin {})));
-        map.insert("not".into(), Value::Function(Box::new(NotBuiltin {})));
-        map.insert("print".into(), Value::Function(Box::new(PrintBuiltin {})));
-        map.insert("show".into(), Value::Function(Box::new(ShowBuiltin {})));
-        map.insert("chr".into(), Value::Function(Box::new(ChrBuiltin {})));
-        map.insert("cat".into(), Value::Function(Box::new(CatBuiltin {})));
-        map.insert("true".into(), Value::Bool(true));
-        map.insert("false".into(), Value::Bool(false));
+        let mut scope = Scope::new(None);
+        scope.insert("add".into(), Value::Function(Box::new(AddBuiltin {})));
+        scope.insert("eq".into(), Value::Function(Box::new(EqBuiltin {})));
+        scope.insert("not".into(), Value::Function(Box::new(NotBuiltin {})));
+        scope.insert("print".into(), Value::Function(Box::new(PrintBuiltin {})));
+        scope.insert("show".into(), Value::Function(Box::new(ShowBuiltin {})));
+        scope.insert("chr".into(), Value::Function(Box::new(ChrBuiltin {})));
+        scope.insert("cat".into(), Value::Function(Box::new(CatBuiltin {})));
+        scope.insert("true".into(), Value::Bool(true));
+        scope.insert("false".into(), Value::Bool(false));
 
         Self {
             scope: Rc::new(RefCell::new(scope)),
             comments: HashMap::new(),
         }
+    }
+
+    pub fn new_scope(&self) -> Self {
+        let new_scope = Scope::new(Some(Rc::clone(&self.scope)));
+        // clone is the wrong choice here, we need to actually share comments between all Scopes
+        let mut new_interp = self.clone();
+        new_interp.scope = Rc::new(RefCell::new(new_scope));
+        new_interp
     }
 
     pub fn comments(&self) -> impl Iterator<Item = (&str, &str)> {
@@ -82,7 +90,7 @@ impl Interpreter {
                         *comment = val.as_str()?.into();
                     }
                     Ref::VarRef(name) => {
-                        self.scope.borrow_mut().0.insert(name.into(), val.clone());
+                        self.scope.borrow_mut().insert(name.into(), val.clone());
                     }
                 }
                 val
@@ -129,6 +137,13 @@ impl Interpreter {
                 }
                 Value::Bool(b)
             }
+            Expr::FuncDef(func_def) => {
+                let val = Value::Function(Box::new(FuncDef::from_expr(func_def.clone())));
+                self.scope
+                    .borrow_mut()
+                    .insert(func_def.name.clone(), val.clone());
+                val
+            }
         };
         Ok(val)
     }
@@ -146,7 +161,6 @@ impl Interpreter {
             Ref::VarRef(name) => self
                 .scope
                 .borrow()
-                .0
                 .get(name)
                 .ok_or_else(|| anyhow!("undefined name {}", name))
                 .map(|val| val.clone()),
@@ -155,11 +169,31 @@ impl Interpreter {
 }
 
 #[derive(Debug)]
-struct Scope(BTreeMap<String, Value>);
+struct Scope {
+    prev: Option<Rc<RefCell<Scope>>>,
+    this: BTreeMap<String, Value>,
+}
 
 impl Scope {
-    fn new() -> Self {
-        Self(BTreeMap::new())
+    fn new(prev: Option<Rc<RefCell<Scope>>>) -> Self {
+        Self {
+            prev,
+            this: Default::default(),
+        }
+    }
+
+    pub fn insert(&mut self, name: String, val: Value) {
+        self.this.insert(name, val);
+    }
+
+    pub fn get(&self, name: &str) -> Option<Value> {
+        if let Some(val) = self.this.get(name) {
+            return Some(val.clone());
+        }
+
+        self.prev
+            .as_ref()
+            .and_then(|scope| scope.borrow().get(name))
     }
 }
 
@@ -177,6 +211,34 @@ pub enum Value {
     Int(i128),
     Function(Box<dyn Function>),
     Bool(bool),
+}
+
+#[derive(Debug, Clone, PartialEq, DynPartialEq)]
+struct FuncDef {
+    block: Block,
+    arg_names: Vec<String>,
+}
+
+impl FuncDef {
+    fn from_expr(func_def: parser::FuncDef) -> Self {
+        Self {
+            block: func_def.block,
+            arg_names: func_def.arg_names,
+        }
+    }
+}
+
+impl Function for FuncDef {
+    fn call(&self, interp: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+        let mut new_interp = interp.new_scope();
+        for (name, val) in self.arg_names.iter().zip(args) {
+            new_interp
+                .scope
+                .borrow_mut()
+                .insert(name.to_owned(), val.clone());
+        }
+        new_interp.interp(&Expr::Block(self.block.clone()))
+    }
 }
 
 impl Value {
@@ -308,7 +370,7 @@ const CHUNK_SIZE: usize = 10;
 fn generate_help_text(interp: &Interpreter) -> String {
     let mut function_names = vec![];
     let mut variable_names = vec![];
-    for (name, builtin) in &interp.scope.borrow().0 {
+    for (name, builtin) in &interp.scope.borrow().this {
         if builtin.as_func().is_ok() {
             function_names.push(name.to_string());
         } else {

@@ -8,13 +8,13 @@
 // be reflected inside the source file.
 //
 // Builtin functions:
-//  add  cat  chr  eq  not  print  show 
+//  add  cat  chr  eq  hello  not  print  show 
 //
 // Available variables
-//  counter  false  i  true  width 
+//  counter  false  i  pipe  true  width 
 //
 // Available comments
-//  #grid  #help  #i
+//  #grid  #help  #i  #x
 
 // #grid
 // |     *****               *    |
@@ -30,16 +30,22 @@
 // |     ** **              *     |
 // |     *****        *           |
 
-
+let pipe = // |
 let width = 0
 
 let i = 1
-while (not(eq(#grid(i), chr(124)))) {
+while (not(eq(#grid(i), pipe))) {
   let i = add(i, 1)
 }
 
-let #i = show(i)
-// #i
+let #i = show(i)// #i
 // 31
 
 let counter = 0
+
+defn hello() {
+  123
+}
+
+let #x = show(hello())// #x
+// 123

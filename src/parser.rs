@@ -9,7 +9,7 @@ pub struct Program {
     pub block: Block,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Block(pub Vec<BlockEl>);
 
 impl Block {
@@ -28,7 +28,7 @@ impl Block {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BlockEl {
     Expr(Expr),
     NewLine,
@@ -36,19 +36,27 @@ pub enum BlockEl {
 
 // TODO: should probably put a concept of newline into here because newlines from the programmer
 // are important
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Block(Block),
     Ref(Ref),
     Comment(Comment),
     Assignment(Assignment),
     IntLiteral(i128),
+    FuncDef(FuncDef),
     FunctionCall(FunctionCall),
     While(While),
     If(If),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct FuncDef {
+    pub name: String,
+    pub arg_names: Vec<String>,
+    pub block: Block,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Comment {
     pub name: Option<String>,
     pub body: String,
@@ -93,6 +101,15 @@ fn find_expr_comments_mut(expr: &'a mut Expr) -> anyhow::Result<HashMap<String, 
             }
         }
         Expr::Ref(_) | Expr::IntLiteral(_) => {}
+        Expr::FuncDef(FuncDef {
+            name: _,
+            arg_names: _,
+            block,
+        }) => {
+            for expr in block.exprs_mut() {
+                try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
+            }
+        }
     }
     Ok(comments)
 }
@@ -119,31 +136,31 @@ fn try_insert<K: Eq + Hash + Send + Sync + Debug + Display, V: Send + Sync + Deb
     Ok(())
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Ref {
     CommentRef(String),
     VarRef(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Assignment {
     pub r#ref: Ref,
     pub expr: Box<Expr>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FunctionCall {
     pub r#ref: Ref,
     pub args: Vec<Expr>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct While {
     pub cond: Box<Expr>,
     pub block: Block,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct If {
     pub cond: Box<Expr>,
     pub block: Block,
@@ -167,6 +184,15 @@ peg::parser! {
         rule block_el_blankline() -> BlockEl
             = newline() { BlockEl::NewLine }
 
+        rule func_decl() -> Expr
+            = "defn" _? name:ident() _? "(" _? arg_names:(ident() ** comma()) _? ")" _* "{" _? block:block() _? "}" {
+                Expr::FuncDef(FuncDef {
+                    name: name.to_string(),
+                    arg_names: arg_names.iter().map(|n| n.to_string()).collect(),
+                    block,
+                })
+            }
+
         rule if_statement() -> Expr
             = "if" _? "(" _? cond:expr() _? ")" _* "{" _? block:block() _? "}" {
                 Expr::If(If {
@@ -184,7 +210,7 @@ peg::parser! {
             }
 
         rule expr() -> Expr
-            = while_loop() / if_statement() / comment() / assignment() / int() / func_call() / r#ref()
+            = while_loop() / if_statement() / func_decl() / comment() / assignment() / int() / func_call() / r#ref()
 
         rule func_call() -> Expr
             = r#ref:ref_ref() "(" _? args:(expr() ** comma()) _? ")" {
