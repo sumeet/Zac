@@ -11,16 +11,18 @@
 // 21
 // 34
 // 55
+// 89
 //
 
 let newline = //
 //
 
-// TODO: for some reason we can't set counter to 0
-let counter = 1
+let counter = 0
 let end = 10
 
 // TODO: it would be BALLER if there was string interpolation
+// let #fib = // Here are the first ${end} few numbers:
+
 let #fib = // Here are the first few numbers:
 //
 

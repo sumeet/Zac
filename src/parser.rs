@@ -213,7 +213,7 @@ peg::parser! {
 
 
         rule int() -> Expr
-            = num:$(['1' .. '9']+ ['0' .. '9']*) { Expr::IntLiteral(num.parse().unwrap()) }
+            = num:$("0" / ['1' .. '9']+ ['0' .. '9']*) { Expr::IntLiteral(num.parse().unwrap()) }
 
         rule comment() -> Expr = named_comment() / anon_comment()
 
