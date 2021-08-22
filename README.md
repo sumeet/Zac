@@ -3,6 +3,8 @@
 
 An interactive scripting language where you can read and modify code comments as if they were regular strings.
 
+### Put more stuff in here
+
 ### Status
 
-Proof-of-concept only developed in the first [Lang Jam](langjam/langjam), a competition to design a programming language around the theme `first-class comments`.
+This is only a proof-of-concept developed in the first [Lang Jam](langjam/langjam), a competition to design a programming language around the theme `first-class comments`.
