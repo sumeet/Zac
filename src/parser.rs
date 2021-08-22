@@ -152,7 +152,7 @@ peg::parser! {
             = block_els:(block_el()+) { Block(block_els) }
 
         rule block_el() -> BlockEl
-            = block_el_expr() / block_el_blankline()
+            = nbspace()? b:(block_el_expr() / block_el_blankline()) { b }
 
         rule block_el_expr() -> BlockEl
             = e:expr() { BlockEl::Expr(e) }
