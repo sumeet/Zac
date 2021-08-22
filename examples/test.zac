@@ -12,9 +12,8 @@ let #header = // here u go
 
 // this is a different comment
 // and the continuation
-add(mynum, mynum)
+// add(mynum, mynum)
 
-// while(1) {
-//   let x = 123
-// }
-
+while (1) {
+  let x = 123
+}

@@ -161,7 +161,7 @@ peg::parser! {
             = newline() { BlockEl::NewLine }
 
         rule while_loop() -> Expr
-            = "while(" _? cond:expr() ")" _* "{" _? block:block() _? "}" {
+            = "while" _? "(" _? cond:expr() _? ")" _* "{" _? block:block() _? "}" {
                 Expr::While(While {
                     cond: Box::new(cond),
                     block,
@@ -169,7 +169,7 @@ peg::parser! {
             }
 
         rule expr() -> Expr
-            = comment() / assignment() / int() / func_call() / r#ref()
+            = while_loop() / comment() / assignment() / int() / func_call() / r#ref()
 
         rule func_call() -> Expr
             = r#ref:var_ref() "(" _? args:(expr() ** comma()) _? ")" {
