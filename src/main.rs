@@ -5,34 +5,18 @@
 use crate::parser::{find_comments_mut, Expr, Program};
 use anyhow::anyhow;
 use interp::Interpreter;
+use std::fs::{read_to_string, File};
+use std::io::Write;
 
 mod interp;
 mod parser;
 mod reassemble;
 
 pub fn main() -> anyhow::Result<()> {
-    let input = r#"
-// #header
-// yo
-//
-// this is the continuation
-let mystring = // hello
+    let filename = parse_args()?;
 
-// TODO: can't set mynum to 0
-let mynum = 1
-
-let #header = // here u go
-// and this is more
-
-// this is a different comment
-// and the continuation
-add(mynum, mynum)
-
-// while(1) {
-//   let x = 123
-// }
-"#;
-    let mut program = parser::parser::program(input)?;
+    let input = read_to_string(&filename)?;
+    let mut program = parser::parser::program(&input)?;
 
     let mut interp = Interpreter::new();
     for (_, comment) in find_comments_mut(&mut program)? {
@@ -45,8 +29,15 @@ add(mynum, mynum)
     replace_comments_in_source_code(&mut program, &mut interp)?;
 
     let assembled = reassemble::output_code(&program);
-    println!("{}", assembled);
+    File::create(&filename)?.write_all(assembled.as_bytes())?;
     Ok(())
+}
+
+fn parse_args() -> anyhow::Result<String> {
+    let mut args = std::env::args();
+    let cmd_name = args.next().unwrap();
+    args.next()
+        .ok_or(anyhow!("usage: {} <code.zack>", cmd_name))
 }
 
 fn replace_comments_in_source_code(
