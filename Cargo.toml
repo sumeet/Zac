@@ -10,6 +10,14 @@ repository = "https://github.com/sumeet/Zac"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "zac"
+path = "src/lib.rs"
+
+[[bin]]
+name = "zac"
+path = "src/main.rs"
+
 [dependencies]
 prettytable-rs = { version= "*", default-features = false }
 peg = "*"

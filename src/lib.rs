@@ -6,19 +6,13 @@ use crate::interp::builtin_comment;
 use crate::parser::{find_comments_mut, Expr, Program};
 use anyhow::anyhow;
 use interp::Interpreter;
-use std::fs::{read_to_string, File};
-use std::io::{stdout, Write};
 
 mod interp;
 mod parser;
 mod reassemble;
 
-pub fn main() -> anyhow::Result<()> {
-    let (filename, is_dry_run) = parse_args()?;
-
-    let input = read_to_string(&filename)?;
-    let mut program = parser::parser::program(&input)?;
-
+pub fn run(code: &str) -> anyhow::Result<String> {
+    let mut program = parser::parser::program(code)?;
     let mut interp = Interpreter::new();
     for (_, comment) in find_comments_mut(&mut program)? {
         interp.add_comment(comment)?;
@@ -29,23 +23,7 @@ pub fn main() -> anyhow::Result<()> {
 
     replace_comments_in_source_code(&mut program, &mut interp)?;
 
-    let assembled = reassemble::output_code(&program);
-    if is_dry_run {
-        stdout().lock().write_all(assembled.as_bytes())?;
-    } else {
-        File::create(&filename)?.write_all(assembled.as_bytes())?;
-    }
-    Ok(())
-}
-
-fn parse_args() -> anyhow::Result<(String, bool)> {
-    let mut args = std::env::args();
-    let cmd_name = args.next().unwrap();
-    let filename = args
-        .next()
-        .ok_or_else(|| anyhow!("usage: {} <code.zac> [--dry]", cmd_name))?;
-    let dry_run = args.next() == Some("--dry".to_string());
-    Ok((filename, dry_run))
+    Ok(reassemble::output_code(&program))
 }
 
 pub fn replace_comments_in_source_code(
