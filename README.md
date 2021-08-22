@@ -1,7 +1,7 @@
 ## Zac Programming Language
-
 <img src=".README_assets/firstclass.png" height="100px">
 
+An interactive scripting language where you can read and modify code comments as if they were regular strings.
 
 ### Status
 
