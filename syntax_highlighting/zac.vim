@@ -15,8 +15,8 @@ syntax keyword zacTodos TODO XXX FIXME NOTE
 
 
 " Language keywords
-syntax keyword zaceywords let
-syntax keyword zacLoopKeywords while to do
+syntax keyword zacKeywords let
+syntax keyword zacLoopKeywords while if
 
 " Comments
 syntax region zacCommentLine start="//" end="$"   contains=zacTodos,zacCommentIdent
@@ -40,7 +40,7 @@ syntax match zacFunction display "\<[a-z_][a-z0-9_]*\>("he=e-1
 
 " Set highlights
 highlight default link zacTodos Todo
-highlight default link zaceywords Keyword
+highlight default link zacKeywords Keyword
 " comments are highlighted as strings in this lang
 " TODO: only some strings treated as values highlighted this way
 " highlight default link zacCommentLine Comment

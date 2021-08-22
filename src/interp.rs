@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail};
 use dyn_partial_eq::*;
 use std::collections::{BTreeMap, HashMap};
 
-use crate::parser::{Assignment, Comment, Expr, FunctionCall, Ref, While};
+use crate::parser::{Assignment, Comment, Expr, FunctionCall, If, Ref, While};
 use dyn_clone::DynClone;
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -92,6 +92,14 @@ impl Interpreter {
                     count += 1;
                 }
                 Value::Int(count)
+            }
+            Expr::If(If { cond, block }) => {
+                // TODO: need to make aa new scope for a new block
+                let b = self.interp(cond)?.as_bool()?;
+                if b {
+                    self.interp(&Expr::Block(block.clone()))?;
+                }
+                Value::Bool(b)
             }
         };
         Ok(val)

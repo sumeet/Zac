@@ -45,6 +45,7 @@ pub enum Expr {
     IntLiteral(i128),
     FunctionCall(FunctionCall),
     While(While),
+    If(If),
 }
 
 #[derive(Debug, Clone)]
@@ -85,7 +86,7 @@ fn find_expr_comments_mut(expr: &'a mut Expr) -> anyhow::Result<HashMap<String, 
                 try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
             }
         }
-        Expr::While(While { cond, block }) => {
+        Expr::While(While { cond, block }) | Expr::If(If { cond, block }) => {
             try_extend(&mut comments, &mut find_expr_comments_mut(cond)?)?;
             for expr in block.exprs_mut() {
                 try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
@@ -142,6 +143,12 @@ pub struct While {
     pub block: Block,
 }
 
+#[derive(Debug, Clone)]
+pub struct If {
+    pub cond: Box<Expr>,
+    pub block: Block,
+}
+
 // usage of peg stolen from https://github.com/A1Liu/gone/blob/master/src/parser.rs
 peg::parser! {
     pub grammar parser() for str {
@@ -160,6 +167,14 @@ peg::parser! {
         rule block_el_blankline() -> BlockEl
             = newline() { BlockEl::NewLine }
 
+        rule if_statement() -> Expr
+            = "if" _? "(" _? cond:expr() _? ")" _* "{" _? block:block() _? "}" {
+                Expr::If(If {
+                    cond: Box::new(cond),
+                    block,
+                })
+            }
+
         rule while_loop() -> Expr
             = "while" _? "(" _? cond:expr() _? ")" _* "{" _? block:block() _? "}" {
                 Expr::While(While {
@@ -169,7 +184,7 @@ peg::parser! {
             }
 
         rule expr() -> Expr
-            = while_loop() / comment() / assignment() / int() / func_call() / r#ref()
+            = while_loop() / if_statement() / comment() / assignment() / int() / func_call() / r#ref()
 
         rule func_call() -> Expr
             = r#ref:var_ref() "(" _? args:(expr() ** comma()) _? ")" {

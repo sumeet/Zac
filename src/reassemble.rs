@@ -1,4 +1,4 @@
-use crate::parser::{Assignment, BlockEl, Comment, Expr, FunctionCall, Program, Ref, While};
+use crate::parser::{Assignment, BlockEl, Comment, Expr, FunctionCall, If, Program, Ref, While};
 use itertools::Itertools;
 
 pub fn output_code(program: &Program) -> String {
@@ -37,13 +37,11 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
                 return;
             }
 
-            let mut lines = body.lines().peekable();
+            let mut lines = body.split("\n").peekable();
             while let Some(line) = lines.next() {
-                // means there's a newline by itself
-                if line.is_empty() {
-                    assembled.push_str("//\n//");
-                } else {
-                    assembled.push_str("// ");
+                assembled.push_str("//");
+                if !line.is_empty() {
+                    assembled.push_str(" ");
                     assembled.push_str(line);
                 }
 
@@ -72,8 +70,12 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
             }
             assembled.push_str(")");
         }
-        Expr::While(While { cond, block }) => {
-            assembled.push_str("while (");
+        e @ (Expr::While(While { cond, block }) | Expr::If(If { cond, block })) => {
+            assembled.push_str(match e {
+                Expr::While(_) => "while (",
+                Expr::If(_) => "if (",
+                _ => unreachable!(),
+            });
             assemble_expr(assembled, cond);
             assembled.push_str(") {\n");
 
