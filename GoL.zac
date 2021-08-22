@@ -11,15 +11,35 @@
 //  add  cat  chr  eq  not  print  show 
 //
 // Available variables
-//  counter  false  height  true  width 
+//  counter  false  i  true  width 
 //
 // Available comments
-//  #help  #grid
+//  #grid  #help  #i
 
 // #grid
+// |     *****               *    |
+// |  *  ** **       *   *        |
+// |     ** **    *    ***        |
+// |   * ** *                     |
+// |     ** *    *     *     *    |
+// |     ** *        *            |
+// |     ** *    *                |
+// |     ** *             *       |
+// |     ** **        *  *        |
+// |     ** **                    |
+// |     ** **              *     |
+// |     *****        *           |
 
 
-let width = 50
-let height = 50
+let width = 0
+
+let i = 1
+while (not(eq(#grid(i), chr(124)))) {
+  let i = add(i, 1)
+}
+
+let #i = show(i)
+// #i
+// 31
 
 let counter = 0

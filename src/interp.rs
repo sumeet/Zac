@@ -1,6 +1,6 @@
 use anyhow::{anyhow, bail};
 use dyn_partial_eq::*;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use crate::parser::{Assignment, Comment, Expr, FunctionCall, If, Ref, While};
 use dyn_clone::DynClone;
@@ -315,7 +315,7 @@ fn generate_help_text(interp: &Interpreter) -> String {
             variable_names.push(name.to_string())
         }
     }
-    let mut comment_names = HashSet::new();
+    let mut comment_names = BTreeSet::new();
     for comment in BUILTIN_COMMENTS {
         comment_names.insert(comment.to_string());
     }

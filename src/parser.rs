@@ -187,7 +187,7 @@ peg::parser! {
             = while_loop() / if_statement() / comment() / assignment() / int() / func_call() / r#ref()
 
         rule func_call() -> Expr
-            = r#ref:var_ref() "(" _? args:(expr() ** comma()) _? ")" {
+            = r#ref:ref_ref() "(" _? args:(expr() ** comma()) _? ")" {
                 Expr::FunctionCall(FunctionCall {
                     r#ref,
                     args,
