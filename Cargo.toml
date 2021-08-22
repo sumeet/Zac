@@ -1,6 +1,6 @@
 cargo-features = ["edition2021"]
 [package]
-name = "soldier"
+name = "zac"
 version = "0.1.0"
 edition = "2021"
 
