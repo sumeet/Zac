@@ -38,6 +38,7 @@ impl Interpreter {
         scope.insert("gt".into(), Value::Function(Box::new(GtBuiltin {})));
         scope.insert("not".into(), Value::Function(Box::new(NotBuiltin {})));
         scope.insert("and".into(), Value::Function(Box::new(AndBuiltin {})));
+        scope.insert("or".into(), Value::Function(Box::new(OrBuiltin {})));
         scope.insert("print".into(), Value::Function(Box::new(PrintBuiltin {})));
         scope.insert("show".into(), Value::Function(Box::new(ShowBuiltin {})));
         scope.insert("chr".into(), Value::Function(Box::new(ChrBuiltin {})));
@@ -369,6 +370,16 @@ impl Function for AndBuiltin {
         let lhs = get_arg(args, 0)?.as_bool()?;
         let rhs = get_arg(args, 1)?.as_bool()?;
         Ok(Value::Bool(lhs && rhs))
+    }
+}
+
+#[derive(Debug, Clone, DynPartialEq, PartialEq)]
+struct OrBuiltin {}
+impl Function for OrBuiltin {
+    fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
+        let lhs = get_arg(args, 0)?.as_bool()?;
+        let rhs = get_arg(args, 1)?.as_bool()?;
+        Ok(Value::Bool(lhs || rhs))
     }
 }
 
