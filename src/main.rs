@@ -43,7 +43,7 @@ fn parse_args() -> anyhow::Result<(String, bool)> {
     let cmd_name = args.next().unwrap();
     let filename = args
         .next()
-        .ok_or_else(|| anyhow!("usage: {} <code.zack> [--dry]", cmd_name))?;
+        .ok_or_else(|| anyhow!("usage: {} <code.zac> [--dry]", cmd_name))?;
     let dry_run = args.next() == Some("--dry".to_string());
     Ok((filename, dry_run))
 }
