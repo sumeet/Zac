@@ -1,3 +1,15 @@
 // What the heck is an interactive scripting language?
 
 // #help
+// Help for the Zac Programming Language (https://github.com/sumeet/Zac)
+//
+// Define a comment with the first line set to an identifier (like #help) and it
+// will be a string usable inside of your program. You can read from it, and if
+// you write to it, the change will be reflected inside the source file.
+//
+// Builtin functions:
+//   add  and  cat  chr  eq  gt  lt  mul  not  or  print  set  show
+// Available variables
+//   false  true
+// Available comments
+//   #help

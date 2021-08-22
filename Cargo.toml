@@ -19,7 +19,6 @@ name = "zac"
 path = "src/main.rs"
 
 [dependencies]
-prettytable-rs = { version= "*", default-features = false }
 peg = "*"
 anyhow = "*"
 itertools = "*"

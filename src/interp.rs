@@ -6,8 +6,6 @@ use crate::parser;
 use crate::parser::{Assignment, Block, Comment, Expr, FunctionCall, If, Ref, While};
 use dyn_clone::DynClone;
 use itertools::Itertools;
-use prettytable::format::consts::FORMAT_CLEAN;
-use prettytable::{Cell, Row, Table};
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -438,8 +436,6 @@ Define a comment with the first line set to an identifier (like #help) and it
 will be a string usable inside of your program. You can read from it, and if
 you write to it, the change will be reflected inside the source file."#;
 
-const CHUNK_SIZE: usize = 10;
-
 fn generate_help_text(interp: &Interpreter) -> String {
     let mut function_names = vec![];
     let mut variable_names = vec![];
@@ -461,21 +457,14 @@ fn generate_help_text(interp: &Interpreter) -> String {
     let mut txt = String::new();
     txt.push_str(WELCOME_TEXT);
     txt.push_str("\n\nBuiltin functions:\n");
-    txt.push_str(&tableize(&function_names).to_string());
+    txt.push_str(&tableize(&function_names));
     txt.push_str("\nAvailable variables\n");
-    txt.push_str(&tableize(&variable_names).to_string());
+    txt.push_str(&tableize(&variable_names));
     txt.push_str("\nAvailable comments\n");
-    txt.push_str(&tableize(&comment_names.into_iter().collect()).to_string());
+    txt.push_str(&tableize(&comment_names.into_iter().collect_vec()).to_string());
     txt.trim_end().into()
 }
 
-fn tableize(function_names: &Vec<String>) -> Table {
-    let mut table = Table::new();
-    table.set_format(*FORMAT_CLEAN);
-    for chunk in &function_names.into_iter().chunks(CHUNK_SIZE) {
-        table.add_row(Row::new(
-            chunk.map(|name| Cell::new(name.as_str())).collect(),
-        ));
-    }
-    table
+fn tableize(function_names: &[String]) -> String {
+    format!("  {}", function_names.iter().join("  "))
 }
