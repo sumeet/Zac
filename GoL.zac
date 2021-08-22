@@ -8,13 +8,13 @@
 // be reflected inside the source file.
 //
 // Builtin functions:
-//  add  cat  chr  eq  hello  not  print  show 
+//  add  calc_width  cat  chr  eq  not  print  show 
 //
 // Available variables
-//  counter  false  i  pipe  true  width 
+//  counter  false  pipe  true  width 
 //
 // Available comments
-//  #grid  #help  #i  #x
+//  #grid  #help  #width
 
 // #grid
 // |     *****               *    |
@@ -31,21 +31,18 @@
 // |     *****        *           |
 
 let pipe = // |
-let width = 0
 
-let i = 1
-while (not(eq(#grid(i), pipe))) {
-  let i = add(i, 1)
+let width = 1
+while (not(eq(#grid(width), pipe))) {
+  let width = add(width, 1)
 }
 
-let #i = show(i)// #i
+let #width = show(width)// #width
 // 31
 
 let counter = 0
 
-defn hello() {
-  123
+defn get_coord(x, y) {
+  // 1 for each left bar
+  let left_bar_offset = add(x, 1);
 }
-
-let #x = show(hello())// #x
-// 123
