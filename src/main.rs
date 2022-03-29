@@ -2,16 +2,15 @@
 #![feature(map_try_insert)]
 #![feature(in_band_lifetimes)]
 
-use crate::interp::builtin_comment;
-use crate::parser::{find_comments_mut, Expr, Program};
 use anyhow::anyhow;
-use interp::Interpreter;
 use std::fs::{read_to_string, File};
 use std::io::{stdout, Write};
+use zac_lib::replace_comments_in_source_code;
 
-mod interp;
-mod parser;
-mod reassemble;
+use zac_lib::interp::Interpreter;
+use zac_lib::parser;
+use zac_lib::parser::{find_comments_mut, Expr};
+use zac_lib::reassemble;
 
 pub fn main() -> anyhow::Result<()> {
     let (filename, is_dry_run) = parse_args()?;
@@ -46,22 +45,4 @@ fn parse_args() -> anyhow::Result<(String, bool)> {
         .ok_or_else(|| anyhow!("usage: {} <code.zac> [--dry]", cmd_name))?;
     let dry_run = args.next() == Some("--dry".to_string());
     Ok((filename, dry_run))
-}
-
-pub fn replace_comments_in_source_code(
-    mut program: &mut Program,
-    interp: &mut Interpreter,
-) -> anyhow::Result<()> {
-    let mut comments = find_comments_mut(&mut program)?;
-    for (name, body) in interp.comments() {
-        let code_comment = comments
-            .get_mut(name)
-            .ok_or_else(|| anyhow!("original code didn't contain comment {}", name))?;
-        code_comment.body = if let Some(builtin) = builtin_comment(interp, name) {
-            builtin.to_string()
-        } else {
-            body.to_string()
-        };
-    }
-    Ok(())
 }

@@ -7,9 +7,9 @@ use crate::parser::{find_comments_mut, Expr, Program};
 use anyhow::anyhow;
 use interp::Interpreter;
 
-mod interp;
-mod parser;
-mod reassemble;
+pub mod interp;
+pub mod parser;
+pub mod reassemble;
 
 pub fn run(code: &str) -> anyhow::Result<String> {
     let mut program = parser::parser::program(code)?;

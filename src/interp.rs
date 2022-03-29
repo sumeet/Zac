@@ -7,6 +7,7 @@ use crate::parser::{Assignment, Block, Comment, Expr, FunctionCall, If, Ref, Whi
 use dyn_clone::DynClone;
 use itertools::Itertools;
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::rc::Rc;
 use std::str::from_utf8;
@@ -123,8 +124,18 @@ impl Interpreter {
                                 .unwrap_or(Value::Bool(false))
                         }
                     }
-                    Value::Bool(_) | Value::Map(_) | Value::Int(_) => {
+                    Value::Map(map) => {
+                        let key = get_arg(&args, 0)?;
+                        map.get(key).cloned().unwrap_or(Value::Bool(false))
+                    }
+                    Value::Bool(_) | Value::Int(_) => {
                         bail!("tried to call a {:?}", var)
+                    }
+                    Value::List(vals) => {
+                        let index = get_arg(&args, 0)?.as_num()?;
+                        vals.get(index as usize)
+                            .cloned()
+                            .unwrap_or(Value::Bool(false))
                     }
                 }
             }
@@ -152,6 +163,12 @@ impl Interpreter {
                     .insert(func_def.name.clone(), val.clone());
                 val
             }
+            Expr::ListLiteral(exprs) => Value::List(
+                exprs
+                    .iter()
+                    .map(|expr| self.interp(expr))
+                    .collect::<anyhow::Result<Vec<_>>>()?,
+            ),
         };
         Ok(val)
     }
@@ -219,6 +236,35 @@ pub enum Value {
     Int(i128),
     Function(Box<dyn Function>),
     Bool(bool),
+    List(Vec<Value>),
+}
+
+impl Eq for Value {}
+
+impl PartialOrd<Self> for Value {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (Value::Int(a), Value::Int(b)) => a.partial_cmp(b),
+            (Value::String(a), Value::String(b)) => a.partial_cmp(b),
+            (Value::Bool(a), Value::Bool(b)) => a.partial_cmp(b),
+            (Value::List(a), Value::List(b)) => a.partial_cmp(b),
+            (Value::Map(a), Value::Map(b)) => a.partial_cmp(b),
+            _ => None,
+        }
+    }
+}
+
+impl Ord for Value {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Value::Int(a), Value::Int(b)) => a.cmp(b),
+            (Value::String(a), Value::String(b)) => a.cmp(b),
+            (Value::Bool(a), Value::Bool(b)) => a.cmp(b),
+            (Value::List(a), Value::List(b)) => a.cmp(b),
+            (Value::Map(a), Value::Map(b)) => a.cmp(b),
+            _ => Ordering::Less,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, DynPartialEq)]
@@ -420,11 +466,12 @@ impl Function for ShowBuiltin {
         let val = get_arg(args, 0)?;
         let s = match val {
             Value::String(s) => s.clone(),
-            Value::Map(m) => format!("{:?}", m),
+            Value::Map(m) => format!("{:#?}", m),
             Value::Int(n) => n.to_string(),
             Value::Function(_) => "<function>".to_string(),
             Value::Bool(true) => "true".to_string(),
             Value::Bool(false) => "false".to_string(),
+            Value::List(l) => format!("{:#?}", l),
         };
         Ok(Value::String(s))
     }

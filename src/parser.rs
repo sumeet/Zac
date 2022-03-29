@@ -43,6 +43,7 @@ pub enum Expr {
     Comment(Comment),
     Assignment(Assignment),
     IntLiteral(i128),
+    ListLiteral(Vec<Expr>),
     FuncDef(FuncDef),
     FunctionCall(FunctionCall),
     While(While),
@@ -107,6 +108,11 @@ fn find_expr_comments_mut(expr: &'a mut Expr) -> anyhow::Result<HashMap<String, 
             block,
         }) => {
             for expr in block.exprs_mut() {
+                try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
+            }
+        }
+        Expr::ListLiteral(exprs) => {
+            for expr in exprs {
                 try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
             }
         }
@@ -210,7 +216,7 @@ peg::parser! {
             }
 
         rule expr() -> Expr
-            = while_loop() / if_statement() / func_decl() / comment() / assignment() / int() / func_call() / r#ref()
+            = while_loop() / if_statement() / func_decl() / comment() / assignment() / list_literal() / int() / func_call() / r#ref()
 
         rule func_call() -> Expr
             = r#ref:ref_ref() "(" _? args:(expr() ** comma()) _? ")" {
@@ -237,6 +243,9 @@ peg::parser! {
                 expr: Box::new(expr),
             })}
 
+
+        rule list_literal() -> Expr
+            = "[" _? exprs:(expr() ** comma()) _? "]" { Expr::ListLiteral(exprs) }
 
         rule int() -> Expr
             = num:$("0" / "-"? ['1' ..= '9']+ ['0' ..= '9']*) { Expr::IntLiteral(num.parse().unwrap()) }

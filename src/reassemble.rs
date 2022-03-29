@@ -101,6 +101,17 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
             assemble_inner_block(assembled, block);
             assembled.push_str("\n}");
         }
+        Expr::ListLiteral(list) => {
+            assembled.push_str("[");
+            if let Some((last, init)) = list.split_last() {
+                for item in init {
+                    assemble_expr(assembled, item);
+                    assembled.push_str(", ");
+                }
+                assemble_expr(assembled, last);
+            }
+            assembled.push_str("]");
+        }
     }
 }
 
