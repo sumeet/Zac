@@ -51,7 +51,7 @@ It's highly recommended that you save the file from inside of your editor instea
 
 In Vim, you can use the following command to save your file:
 ```vim
-:map \t :w\|:!zac %<CR>:e<CR>
+:map \t :w\|:!zac %<CR>:e<CR><CR>
 ```
 
 ### Zac Language Overview

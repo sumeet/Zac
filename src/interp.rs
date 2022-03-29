@@ -6,6 +6,7 @@ use crate::parser;
 use crate::parser::{Assignment, Block, Comment, Expr, FunctionCall, If, Ref, While};
 use dyn_clone::DynClone;
 use itertools::Itertools;
+use pretty::{Doc, RcDoc};
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::fmt::Debug;
@@ -92,7 +93,7 @@ impl Interpreter {
                         let comment = self.comments.get_mut(comment_name).ok_or_else(|| {
                             anyhow!("couldn't find comment with name {}", comment_name)
                         })?;
-                        *comment = val.as_str()?.into();
+                        *comment = stringify(&val);
                     }
                     Ref::VarRef(name) => {
                         self.scope.borrow_mut().insert(name.into(), val.clone());
@@ -237,6 +238,51 @@ pub enum Value {
     Function(Box<dyn Function>),
     Bool(bool),
     List(Vec<Value>),
+}
+
+fn to_doc(val: &Value) -> RcDoc<()> {
+    match val {
+        Value::String(s) => RcDoc::as_string(s),
+        Value::Map(m) => RcDoc::text("{")
+            .append(
+                RcDoc::intersperse(
+                    m.iter().map(|(k, v)| {
+                        RcDoc::intersperse(
+                            [to_doc(k), RcDoc::text("=>"), to_doc(v)].into_iter(),
+                            ":",
+                        )
+                        .group()
+                    }),
+                    Doc::line(),
+                )
+                .nest(1)
+                .group(),
+            )
+            .append(RcDoc::text("}")),
+        Value::Int(n) => RcDoc::as_string(n),
+        Value::Function(_) => RcDoc::as_string("<function>"),
+        Value::Bool(b) => RcDoc::as_string(b),
+        Value::List(vals) => RcDoc::text("[")
+            .append(
+                RcDoc::intersperse(
+                    vals.iter().map(to_doc),
+                    RcDoc::text(",").append(Doc::line()),
+                )
+                .nest(1)
+                .group(),
+            )
+            .append(RcDoc::text("]")),
+    }
+}
+
+const PRETTY_PRINT_COLUMN_WIDTH: usize = 75;
+
+fn stringify(val: &Value) -> String {
+    let mut w = Vec::new();
+    to_doc(val)
+        .render(PRETTY_PRINT_COLUMN_WIDTH, &mut w)
+        .unwrap();
+    String::from_utf8(w).unwrap()
 }
 
 impl Eq for Value {}
@@ -464,16 +510,7 @@ struct ShowBuiltin {}
 impl Function for ShowBuiltin {
     fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
         let val = get_arg(args, 0)?;
-        let s = match val {
-            Value::String(s) => s.clone(),
-            Value::Map(m) => format!("{:#?}", m),
-            Value::Int(n) => n.to_string(),
-            Value::Function(_) => "<function>".to_string(),
-            Value::Bool(true) => "true".to_string(),
-            Value::Bool(false) => "false".to_string(),
-            Value::List(l) => format!("{:#?}", l),
-        };
-        Ok(Value::String(s))
+        Ok(Value::String(stringify(val)))
     }
 }
 
