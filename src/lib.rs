@@ -31,7 +31,7 @@ pub fn replace_comments_in_source_code(
     interp: &mut Interpreter,
 ) -> anyhow::Result<()> {
     let mut comments = find_comments_mut(&mut program)?;
-    for (name, body) in interp.comments() {
+    for (name, body) in interp.comments().iter() {
         let code_comment = comments
             .get_mut(name)
             .ok_or_else(|| anyhow!("original code didn't contain comment {}", name))?;

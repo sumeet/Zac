@@ -48,6 +48,30 @@ pub enum Expr {
     FunctionCall(FunctionCall),
     While(While),
     If(If),
+    BinOp(BinOp),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Op {
+    Add,
+    Sub,
+    Div,
+    Mul,
+    Eq,
+    Neq,
+    Gte,
+    Gt,
+    Lte,
+    Lt,
+    And,
+    Or,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BinOp {
+    pub op: Op,
+    pub lhs: Box<Expr>,
+    pub rhs: Box<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -116,6 +140,8 @@ fn find_expr_comments_mut(expr: &'a mut Expr) -> anyhow::Result<HashMap<String, 
                 try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
             }
         }
+        // binop ain't gonna have any comments lol
+        Expr::BinOp(_) => {}
     }
     Ok(comments)
 }
@@ -215,8 +241,23 @@ peg::parser! {
                 })
             }
 
+        #[cache_left_rec]
         rule expr() -> Expr
-            = while_loop() / if_statement() / func_decl() / comment() / assignment() / list_literal() / int() / func_call() / r#ref()
+            = while_loop() / if_statement() / func_decl() / comment() / bin_op_expr() / assignment() / list_literal() / int() / func_call() / r#ref()
+
+        #[cache_left_rec]
+        rule bin_op_expr() -> Expr
+            = left:bin_op_expr() _? op:op() _? right:expr() {
+                Expr::BinOp(BinOp { lhs: Box::new(left), op: op, rhs: Box::new(right) })
+            } / left:int() _? op:op() _? right:expr() {
+                Expr::BinOp(BinOp { lhs: Box::new(left), op: op, rhs: Box::new(right) })
+            }
+
+        rule op() -> Op
+            = ("+" { Op::Add } / "/" { Op::Div } / "-" { Op::Sub } /
+               "*" { Op::Mul } / "==" { Op::Eq } / "!=" { Op::Neq } / ">=" { Op::Gte } /
+               "<=" { Op::Lte } / ">" { Op::Gt } / "<" { Op::Lt } / "&&" { Op::And } /
+               "||" { Op::Or })
 
         rule func_call() -> Expr
             = r#ref:ref_ref() "(" _? args:(expr() ** comma()) _? ")" {

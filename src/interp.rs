@@ -3,28 +3,57 @@ use dyn_partial_eq::*;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use crate::parser;
-use crate::parser::{Assignment, Block, Comment, Expr, FunctionCall, If, Ref, While};
+use crate::parser::{Assignment, BinOp, Block, Comment, Expr, FunctionCall, If, Op, Ref, While};
 use dyn_clone::DynClone;
 use itertools::Itertools;
+use lazy_static::lazy_static;
 use pretty::{Doc, RcDoc};
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::rc::Rc;
 use std::str::from_utf8;
+use std::sync::Mutex;
 
 #[derive(Debug, Clone)]
 pub struct Interpreter {
     scope: Rc<RefCell<Scope>>,
-    comments: HashMap<String, String>,
+    comments: Rc<RefCell<HashMap<String, String>>>,
 }
 
-const BUILTIN_COMMENTS: &[&str; 1] = &["#help"];
+const BUILTIN_COMMENTS: &[&str; 3] = &["#help", "#example-function", "#data-types"];
 pub fn builtin_comment(interpreter: &Interpreter, name: &str) -> Option<String> {
     match name {
         "help" => Some(generate_help_text(interpreter)),
+        "example-function" => Some(
+            r#"""\
+defn fib(n) {
+    let a = 1
+    let b = 1
+    let temp = 1
+    let i = 0;
+    while (i < n) {
+        let temp = a + b
+        let a = b
+        let b = temp
+        i = i + 1
+    }
+    a
+}
+#"""#
+                .to_string(),
+        ),
         _ => None,
     }
+}
+
+lazy_static! {
+    static ref BUILTIN_CONSTANTS: Mutex<HashMap<String, Value>> = {
+        let mut map = HashMap::new();
+        map.insert("true".to_string(), Value::Bool(true));
+        map.insert("false".to_string(), Value::Bool(false));
+        Mutex::new(map)
+    };
 }
 
 impl Interpreter {
@@ -43,33 +72,38 @@ impl Interpreter {
         scope.insert("show".into(), Value::Function(Box::new(ShowBuiltin {})));
         scope.insert("chr".into(), Value::Function(Box::new(ChrBuiltin {})));
         scope.insert("cat".into(), Value::Function(Box::new(CatBuiltin {})));
-        scope.insert("true".into(), Value::Bool(true));
-        scope.insert("false".into(), Value::Bool(false));
+        BUILTIN_CONSTANTS.lock().unwrap().iter().for_each(|(k, v)| {
+            scope.insert(k.clone(), v.clone());
+        });
 
         Self {
             scope: Rc::new(RefCell::new(scope)),
-            comments: HashMap::new(),
+            comments: Rc::new(RefCell::new(HashMap::new())),
         }
     }
 
     pub fn new_scope(&self) -> Self {
         let new_scope = Scope::new(Some(Rc::clone(&self.scope)));
-        // clone is the wrong choice here, we need to actually share comments between all Scopes
         let mut new_interp = self.clone();
         new_interp.scope = Rc::new(RefCell::new(new_scope));
         new_interp
     }
 
-    pub fn comments(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.comments.iter().map(|(k, v)| (k.as_str(), v.as_str()))
+    pub fn comments(&self) -> Vec<(String, String)> {
+        self.comments
+            .borrow()
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect()
     }
 
     pub fn add_comment(&mut self, comment: &Comment) -> anyhow::Result<()> {
         if let Some(name) = &comment.name {
-            if self.comments.contains_key(name) {
+            let mut comments = self.comments.borrow_mut();
+            if comments.contains_key(name) {
                 bail!("duplicate comment: {}", name);
             }
-            self.comments.insert(name.into(), comment.body.clone());
+            comments.insert(name.into(), comment.body.clone());
         }
         Ok(())
     }
@@ -90,7 +124,8 @@ impl Interpreter {
                 let val = self.interp(expr)?;
                 match r#ref {
                     Ref::CommentRef(comment_name) => {
-                        let comment = self.comments.get_mut(comment_name).ok_or_else(|| {
+                        let mut comments = self.comments.borrow_mut();
+                        let comment = comments.get_mut(comment_name).ok_or_else(|| {
                             anyhow!("couldn't find comment with name {}", comment_name)
                         })?;
                         *comment = stringify(&val);
@@ -170,8 +205,39 @@ impl Interpreter {
                     .map(|expr| self.interp(expr))
                     .collect::<anyhow::Result<Vec<_>>>()?,
             ),
+            Expr::BinOp(BinOp { op, lhs, rhs }) => self.eval_bin_op(lhs, *op, rhs)?,
         };
         Ok(val)
+    }
+
+    fn eval_bin_op(&mut self, lhs: &Box<Expr>, op: Op, rhs: &Box<Expr>) -> anyhow::Result<Value> {
+        Ok(match op {
+            Op::Add => {
+                let lhs = self.interp(lhs)?;
+                let rhs = self.interp(rhs)?;
+                match (lhs, rhs) {
+                    (Value::Int(l), Value::Int(r)) => Value::Int(l + r),
+                    (Value::String(l), Value::String(r)) => Value::String(l + &r),
+                    (Value::List(l), Value::List(r)) => {
+                        Value::List(l.into_iter().chain(r).collect())
+                    }
+                    (Value::Map(l), Value::Map(r)) => Value::Map(l.into_iter().chain(r).collect()),
+                    (Value::Bool(l), Value::Bool(r)) => Value::Bool(l || r),
+                    (l, r) => bail!("can't add {:?} and {:?}", l, r),
+                }
+            }
+            Op::Sub => todo!(),
+            Op::Div => todo!(),
+            Op::Mul => todo!(),
+            Op::Eq => todo!(),
+            Op::Neq => todo!(),
+            Op::Gte => todo!(),
+            Op::Gt => todo!(),
+            Op::Lte => todo!(),
+            Op::Lt => todo!(),
+            Op::And => todo!(),
+            Op::Or => todo!(),
+        })
     }
 
     // TODO: this should probably be a refcell
@@ -180,9 +246,11 @@ impl Interpreter {
             Ref::CommentRef(name) => {
                 let comment_body = self
                     .comments
+                    .borrow()
                     .get(name)
-                    .ok_or_else(|| anyhow!("undefined comment {}", name))?;
-                Ok(Value::String(comment_body.clone()))
+                    .ok_or_else(|| anyhow!("undefined comment {}", name))?
+                    .clone();
+                Ok(Value::String(comment_body))
             }
             Ref::VarRef(name) => self
                 .scope
@@ -224,7 +292,7 @@ impl Scope {
 }
 
 #[dyn_partial_eq]
-pub trait Function: Debug + DynClone {
+pub trait Function: Debug + DynClone + Send {
     fn call(&self, interp: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value>;
 }
 
@@ -534,7 +602,7 @@ fn generate_help_text(interp: &Interpreter) -> String {
     for comment in BUILTIN_COMMENTS {
         comment_names.insert(comment.to_string());
     }
-    for comment in interp.comments.keys() {
+    for comment in interp.comments.borrow().keys() {
         comment_names.insert(format!("#{}", comment));
     }
 

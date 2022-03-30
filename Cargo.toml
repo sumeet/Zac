@@ -18,6 +18,7 @@ name = "zac"
 path = "src/main.rs"
 
 [dependencies]
+lazy_static = "*"
 peg = "*"
 anyhow = "*"
 itertools = "*"

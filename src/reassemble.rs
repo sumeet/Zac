@@ -1,5 +1,6 @@
 use crate::parser::{
-    Assignment, Block, BlockEl, Comment, Expr, FuncDef, FunctionCall, If, Program, Ref, While,
+    Assignment, BinOp, Block, BlockEl, Comment, Expr, FuncDef, FunctionCall, If, Op, Program, Ref,
+    While,
 };
 use itertools::Itertools;
 
@@ -111,6 +112,26 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
                 assemble_expr(assembled, last);
             }
             assembled.push_str("]");
+        }
+        Expr::BinOp(BinOp { op, lhs, rhs }) => {
+            //assembled.push_str("(");
+            assemble_expr(assembled, lhs);
+            assembled.push_str(match op {
+                Op::Add => " + ",
+                Op::Sub => " - ",
+                Op::Mul => " * ",
+                Op::Div => " / ",
+                Op::Eq => " == ",
+                Op::Neq => " != ",
+                Op::Lt => " < ",
+                Op::Gt => " > ",
+                Op::Lte => " <= ",
+                Op::Gte => " >= ",
+                Op::And => " && ",
+                Op::Or => " || ",
+            });
+            assemble_expr(assembled, rhs);
+            //assembled.push_str(")");
         }
     }
 }
