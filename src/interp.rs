@@ -1,6 +1,6 @@
 use anyhow::{anyhow, bail};
 use dyn_partial_eq::*;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use crate::parser;
 use crate::parser::{Assignment, BinOp, Block, Comment, Expr, FunctionCall, If, Op, Ref, While};
@@ -18,10 +18,10 @@ use std::sync::Mutex;
 #[derive(Debug, Clone)]
 pub struct Interpreter {
     scope: Rc<RefCell<Scope>>,
-    comments: Rc<RefCell<HashMap<String, String>>>,
+    comments: Rc<RefCell<BTreeMap<String, String>>>,
 }
 
-const BUILTIN_COMMENTS: &[&str; 3] = &["#help", "#example-function", "#data-types"];
+const BUILTIN_COMMENTS: &[&str; 3] = &["help", "example-function", "data-types"];
 pub fn builtin_comment(interpreter: &Interpreter, name: &str) -> Option<String> {
     match name {
         "help" => Some(generate_help_text(interpreter)),
@@ -48,8 +48,8 @@ defn fib(n) {
 }
 
 lazy_static! {
-    static ref BUILTIN_CONSTANTS: Mutex<HashMap<String, Value>> = {
-        let mut map = HashMap::new();
+    static ref BUILTIN_CONSTANTS: Mutex<BTreeMap<String, Value>> = {
+        let mut map = BTreeMap::new();
         map.insert("true".to_string(), Value::Bool(true));
         map.insert("false".to_string(), Value::Bool(false));
         Mutex::new(map)
@@ -78,7 +78,7 @@ impl Interpreter {
 
         Self {
             scope: Rc::new(RefCell::new(scope)),
-            comments: Rc::new(RefCell::new(HashMap::new())),
+            comments: Rc::new(RefCell::new(BTreeMap::new())),
         }
     }
 
@@ -582,6 +582,10 @@ impl Function for ShowBuiltin {
     }
 }
 
+fn format_comment(s: &str) -> String {
+    format!("#{}", s)
+}
+
 const WELCOME_TEXT: &str = r#"Help for the Zac Programming Language (https://github.com/sumeet/Zac)
 
 Define a comment with the first line set to an identifier (like #help) and it
@@ -590,33 +594,46 @@ you write to it, the change will be reflected inside the source file."#;
 
 fn generate_help_text(interp: &Interpreter) -> String {
     let mut function_names = vec![];
-    let mut variable_names = vec![];
+    let mut variable_names = HashSet::new();
     for (name, builtin) in &interp.scope.borrow().this {
         if builtin.as_func().is_ok() {
             function_names.push(name.to_string());
         } else {
-            variable_names.push(name.to_string())
+            if !BUILTIN_CONSTANTS.lock().unwrap().contains_key(name) {
+                variable_names.insert(name.to_string());
+            }
         }
     }
-    let mut comment_names = BTreeSet::new();
-    for comment in BUILTIN_COMMENTS {
-        comment_names.insert(comment.to_string());
-    }
+    let mut non_builtin_comment_names = BTreeSet::new();
     for comment in interp.comments.borrow().keys() {
-        comment_names.insert(format!("#{}", comment));
+        if !BUILTIN_COMMENTS.contains(&comment.as_str()) {
+            non_builtin_comment_names.insert(format_comment(comment));
+        }
     }
 
     let mut txt = String::new();
     txt.push_str(WELCOME_TEXT);
-    txt.push_str("\n\nBuiltin functions:\n");
-    txt.push_str(&tableize(&function_names));
-    txt.push_str("\nAvailable variables\n");
-    txt.push_str(&tableize(&variable_names));
-    txt.push_str("\nAvailable comments\n");
-    txt.push_str(&tableize(&comment_names.into_iter().collect_vec()).to_string());
+    txt.push_str("\n\nBuiltin comments\n");
+    let builtin_comments = BUILTIN_COMMENTS
+        .iter()
+        .map(|c| format_comment(c))
+        .collect::<Vec<_>>();
+    txt.push_str(&tableize(builtin_comments.iter().map(|s| s.as_str())));
+    txt.push_str("\nBuiltin functions:\n");
+    txt.push_str(&tableize(function_names.iter().map(|s| s.as_str())));
+    txt.push_str("\nBuiltin constants\n");
+    txt.push_str(&tableize(BUILTIN_CONSTANTS.lock().unwrap().iter().map(|(k, _)| k.as_str())));
+    if !variable_names.is_empty() {
+        txt.push_str("\nAvailable variables\n");
+        txt.push_str(&tableize(variable_names.iter().map(|s| s.as_str())));
+    }
+    if !non_builtin_comment_names.is_empty() {
+        txt.push_str("\nAvailable comments\n");
+        txt.push_str(&tableize(non_builtin_comment_names.iter().map(|s| s.as_str())).to_string());
+    }
     txt.trim_end().into()
 }
 
-fn tableize(function_names: &[String]) -> String {
-    format!("  {}", function_names.iter().join("  "))
+fn tableize<'a>(mut function_names: impl Iterator<Item = &'a str>) -> String {
+    format!("  {}", function_names.join("  "))
 }

@@ -22,7 +22,7 @@ syntax keyword zacLoopKeywords while if
 syntax region zacCommentLine start="//" end="$"   contains=zacTodos,zacCommentIdent
 syntax region zacDirective start="%" end=" "
 
-syntax match zacCommentIdent		"#[a-z_][a-z0-9_]*\>"
+syntax match zacCommentIdent		"#[a-z_-][a-z0-9_-]*\>"
 syntax match zacIdent		"\<[a-z_][a-z0-9_]*\>"
 
 " Numbers
