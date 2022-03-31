@@ -15,7 +15,7 @@ lazy_static! {
 pub(crate) fn rewrap(s: &str) -> String {
     let mut new_comment_string = String::new();
 
-    let comment_root = dbg!(parse_comment(s));
+    let comment_root = parse_comment(s);
 
     for (i, node) in comment_root.children.iter().enumerate() {
         match node {
@@ -127,7 +127,6 @@ fn parse_comment(s: &str) -> CommentRoot {
     };
 
     let lines = s.lines().map(|s| s.to_string()).collect_vec();
-    dbg!(&lines);
     let mut i = 0;
 
     let mut words_acc = vec![];
@@ -137,6 +136,14 @@ fn parse_comment(s: &str) -> CommentRoot {
         let line = &lines[i];
 
         if line.starts_with(INDENT_SPACES.as_str()) {
+            // TODO: refactor into struct+impl (OO)
+            if !paragraph_acc.is_empty() {
+                let mut clear_paragraph_acc = vec![];
+                std::mem::swap(&mut clear_paragraph_acc, &mut paragraph_acc);
+                root.children
+                    .push(CommentNode::Paragraph(clear_paragraph_acc));
+            }
+
             words_acc.extend(line.split_whitespace());
             i += 1;
             continue;

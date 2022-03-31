@@ -1,6 +1,6 @@
 use anyhow::{anyhow, bail};
 use dyn_partial_eq::*;
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::parser::{Assignment, BinOp, Block, Comment, Expr, FunctionCall, If, Op, Ref, While};
 use crate::{parser, wrapping};
@@ -550,13 +550,13 @@ you write to it, the change will be reflected inside the source file."#;
 
 fn generate_help_text(interp: &Interpreter) -> String {
     let mut function_names = vec![];
-    let mut variable_names = HashSet::new();
-    for (name, builtin) in &interp.scope.borrow().this {
-        if builtin.as_func().is_ok() {
+    let mut variable_names = vec![];
+    for (name, global_var_value) in &interp.scope.borrow().this {
+        if global_var_value.as_func().is_ok() {
             function_names.push(name.to_string());
         } else {
             if !BUILTIN_CONSTANTS.lock().unwrap().contains_key(name) {
-                variable_names.insert(name.to_string());
+                variable_names.push(name.to_string());
             }
         }
     }
@@ -586,11 +586,11 @@ fn generate_help_text(interp: &Interpreter) -> String {
             .map(|(k, _)| k.as_str()),
     ));
     if !variable_names.is_empty() {
-        txt.push_str("\nAvailable variables\n");
+        txt.push_str("\nAvailable variables:\n");
         txt.push_str(&tableize(variable_names.iter().map(|s| s.as_str())));
     }
     if !non_builtin_comment_names.is_empty() {
-        txt.push_str("\nAvailable comments\n");
+        txt.push_str("\nAvailable comments:\n");
         txt.push_str(&tableize(non_builtin_comment_names.iter().map(|s| s.as_str())).to_string());
     }
     txt.trim_end().into()
