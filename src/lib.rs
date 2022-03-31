@@ -4,12 +4,14 @@
 
 use crate::interp::builtin_comment;
 use crate::parser::{find_comments_mut, Expr, Program};
+use crate::wrapping::rewrap;
 use anyhow::anyhow;
 use interp::Interpreter;
 
 pub mod interp;
 pub mod parser;
 pub mod reassemble;
+mod wrapping;
 
 pub fn run(code: &str) -> anyhow::Result<String> {
     let mut program = parser::parser::program(code)?;
@@ -35,11 +37,11 @@ pub fn replace_comments_in_source_code(
         let code_comment = comments
             .get_mut(name)
             .ok_or_else(|| anyhow!("original code didn't contain comment {}", name))?;
-        code_comment.body = if let Some(builtin) = builtin_comment(interp, name) {
-            builtin.to_string()
+        code_comment.body = rewrap(&if let Some(builtin) = builtin_comment(interp, name) {
+            builtin
         } else {
             body.to_string()
-        };
+        });
     }
     Ok(())
 }

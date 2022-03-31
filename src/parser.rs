@@ -316,7 +316,7 @@ peg::parser! {
                 }
             }
 
-        rule ident() -> &'input str = $(ident_start()+ ['a'..='z' | 'A'..='Z' | '_' | '0'..='9']*)
+        rule ident() -> &'input str = $(ident_start()+ ['a'..='z' | 'A'..='Z' | '_' | '-' | '0'..='9']*)
         rule ident_start() -> &'input str = $(['a'..='z' | 'A'..='Z' | '_']+)
 
         rule comma() -> () = _? "," _?

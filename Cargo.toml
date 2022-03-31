@@ -25,3 +25,5 @@ itertools = "*"
 dyn-clone = "*"
 dyn_partial_eq = "*"
 pretty = "*"
+textwrap = {version = "*", features = ["hyphenation"]}
+hyphenation = "*"

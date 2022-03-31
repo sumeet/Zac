@@ -2,12 +2,11 @@ use anyhow::{anyhow, bail};
 use dyn_partial_eq::*;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
-use crate::parser;
 use crate::parser::{Assignment, BinOp, Block, Comment, Expr, FunctionCall, If, Op, Ref, While};
+use crate::{parser, wrapping};
 use dyn_clone::DynClone;
 use itertools::Itertools;
 use lazy_static::lazy_static;
-use pretty::{Doc, RcDoc};
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::fmt::Debug;
@@ -26,7 +25,8 @@ pub fn builtin_comment(interpreter: &Interpreter, name: &str) -> Option<String> 
     match name {
         "help" => Some(generate_help_text(interpreter)),
         "example-function" => Some(
-            r#"""\
+            r#"The following function computes the nth value in the Fibonacci sequence:
+
 defn fib(n) {
     let a = 1
     let b = 1
@@ -39,9 +39,8 @@ defn fib(n) {
         i = i + 1
     }
     a
-}
-#"""#
-                .to_string(),
+}"#
+            .to_string(),
         ),
         _ => None,
     }
@@ -112,7 +111,9 @@ impl Interpreter {
         let val = match expr {
             Expr::Block(block) => {
                 let mut exprs = block.exprs();
-                let first = exprs.next().ok_or(anyhow!("a block can't be empty"))?;
+                let first = exprs
+                    .next()
+                    .ok_or_else(|| anyhow!("a block can't be empty"))?;
                 let mut res = self.interp(first)?;
                 for expr in exprs {
                     res = self.interp(expr)?;
@@ -128,7 +129,7 @@ impl Interpreter {
                         let comment = comments.get_mut(comment_name).ok_or_else(|| {
                             anyhow!("couldn't find comment with name {}", comment_name)
                         })?;
-                        *comment = stringify(&val);
+                        *comment = wrapping::stringify(&val);
                     }
                     Ref::VarRef(name) => {
                         self.scope.borrow_mut().insert(name.into(), val.clone());
@@ -306,51 +307,6 @@ pub enum Value {
     Function(Box<dyn Function>),
     Bool(bool),
     List(Vec<Value>),
-}
-
-fn to_doc(val: &Value) -> RcDoc<()> {
-    match val {
-        Value::String(s) => RcDoc::as_string(s),
-        Value::Map(m) => RcDoc::text("{")
-            .append(
-                RcDoc::intersperse(
-                    m.iter().map(|(k, v)| {
-                        RcDoc::intersperse(
-                            [to_doc(k), RcDoc::text("=>"), to_doc(v)].into_iter(),
-                            ":",
-                        )
-                        .group()
-                    }),
-                    Doc::line(),
-                )
-                .nest(1)
-                .group(),
-            )
-            .append(RcDoc::text("}")),
-        Value::Int(n) => RcDoc::as_string(n),
-        Value::Function(_) => RcDoc::as_string("<function>"),
-        Value::Bool(b) => RcDoc::as_string(b),
-        Value::List(vals) => RcDoc::text("[")
-            .append(
-                RcDoc::intersperse(
-                    vals.iter().map(to_doc),
-                    RcDoc::text(",").append(Doc::line()),
-                )
-                .nest(1)
-                .group(),
-            )
-            .append(RcDoc::text("]")),
-    }
-}
-
-const PRETTY_PRINT_COLUMN_WIDTH: usize = 75;
-
-fn stringify(val: &Value) -> String {
-    let mut w = Vec::new();
-    to_doc(val)
-        .render(PRETTY_PRINT_COLUMN_WIDTH, &mut w)
-        .unwrap();
-    String::from_utf8(w).unwrap()
 }
 
 impl Eq for Value {}
@@ -578,7 +534,7 @@ struct ShowBuiltin {}
 impl Function for ShowBuiltin {
     fn call(&self, _: &mut Interpreter, args: &[Value]) -> anyhow::Result<Value> {
         let val = get_arg(args, 0)?;
-        Ok(Value::String(stringify(val)))
+        Ok(Value::String(wrapping::stringify(val)))
     }
 }
 
@@ -613,7 +569,7 @@ fn generate_help_text(interp: &Interpreter) -> String {
 
     let mut txt = String::new();
     txt.push_str(WELCOME_TEXT);
-    txt.push_str("\n\nBuiltin comments\n");
+    txt.push_str("\n\nBuiltin comments:\n");
     let builtin_comments = BUILTIN_COMMENTS
         .iter()
         .map(|c| format_comment(c))
@@ -621,8 +577,14 @@ fn generate_help_text(interp: &Interpreter) -> String {
     txt.push_str(&tableize(builtin_comments.iter().map(|s| s.as_str())));
     txt.push_str("\nBuiltin functions:\n");
     txt.push_str(&tableize(function_names.iter().map(|s| s.as_str())));
-    txt.push_str("\nBuiltin constants\n");
-    txt.push_str(&tableize(BUILTIN_CONSTANTS.lock().unwrap().iter().map(|(k, _)| k.as_str())));
+    txt.push_str("\nBuiltin constants:\n");
+    txt.push_str(&tableize(
+        BUILTIN_CONSTANTS
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|(k, _)| k.as_str()),
+    ));
     if !variable_names.is_empty() {
         txt.push_str("\nAvailable variables\n");
         txt.push_str(&tableize(variable_names.iter().map(|s| s.as_str())));
