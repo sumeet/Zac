@@ -3,39 +3,39 @@
 // Play below by running: zac GoL.zac
 
 // #grid
-// |                  * *  ****            |
-// |                 *   *******           |
-// |                 *   **   * **         |
-// |                   ** *    *** *       |
-// |                 ** **      *   *      |
-// |    *       *          **    ***       |
-// |  ***      **          ***  *          |
-// | ****       *         **    **         |
-// |**                   * * * *           |
-// | *    * *            *  *****          |
-// |  *    * ***          ** **  *         |
-// |          **           ** *       *    |
-// |       *                  *   *  * *   |
-// |        **               **  **  * *   |
-// |                           **     *    |
-// |                                       |
+// ` |                  * *  ****            |
+// ` |                 *   *******           |
+// ` |                 *   **   * **         |
+// ` |                   ** *    *** *       |
+// ` |                 ** **      *   *      |
+// ` |    *       *          **    ***       |
+// ` |  ***      **          ***  *          |
+// ` | ****       *         **    **         |
+// ` |**                   * * * *           |
+// ` | *    * *            *  *****          |
+// ` |  *    * ***          ** **  *         |
+// ` |          **           ** *       *    |
+// ` |       *                  *   *  * *   |
+// ` |        **               **  **  * *   |
+// ` |                           **     *    |
+// ` |                                       |
 
 let pipe = // |
 let star = // *
 let space = chr(32)
 
-let width = 1
+let width = 3
 while (not(eq(#grid(width), pipe))) {
   let width = add(width, 1)
 }
-let width = add(width, -1)
+let width = add(width, -3)
 
 defn calc_offset(x, y) {
-  // 1 for the first left bar
-  let offset = 1
+  // 3 for the first left bar
+  let offset = 3
   // 1 offset for each left, right pipe and each newline if y > 0
   if (gt(y, 0)) {
-    let offset = add(offset, mul(y, 3))
+    let offset = add(offset, mul(y, 5))
   }
   let offset = add(offset, mul(y, width))
   add(offset, x)
