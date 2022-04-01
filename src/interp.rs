@@ -212,32 +212,49 @@ impl Interpreter {
     }
 
     fn eval_bin_op(&mut self, lhs: &Box<Expr>, op: Op, rhs: &Box<Expr>) -> anyhow::Result<Value> {
+        let lhs = self.interp(lhs)?;
+        let rhs = self.interp(rhs)?;
         Ok(match op {
-            Op::Add => {
-                let lhs = self.interp(lhs)?;
-                let rhs = self.interp(rhs)?;
-                match (lhs, rhs) {
-                    (Value::Int(l), Value::Int(r)) => Value::Int(l + r),
-                    (Value::String(l), Value::String(r)) => Value::String(l + &r),
-                    (Value::List(l), Value::List(r)) => {
-                        Value::List(l.into_iter().chain(r).collect())
-                    }
-                    (Value::Map(l), Value::Map(r)) => Value::Map(l.into_iter().chain(r).collect()),
-                    (Value::Bool(l), Value::Bool(r)) => Value::Bool(l || r),
-                    (l, r) => bail!("can't add {:?} and {:?}", l, r),
-                }
-            }
-            Op::Sub => todo!(),
-            Op::Div => todo!(),
-            Op::Mul => todo!(),
-            Op::Eq => todo!(),
-            Op::Neq => todo!(),
-            Op::Gte => todo!(),
-            Op::Gt => todo!(),
-            Op::Lte => todo!(),
-            Op::Lt => todo!(),
-            Op::And => todo!(),
-            Op::Or => todo!(),
+            Op::Add => match (lhs, rhs) {
+                (Value::Int(l), Value::Int(r)) => Value::Int(l + r),
+                (Value::String(l), Value::String(r)) => Value::String(l + &r),
+                (Value::List(l), Value::List(r)) => Value::List(l.into_iter().chain(r).collect()),
+                (Value::Map(l), Value::Map(r)) => Value::Map(l.into_iter().chain(r).collect()),
+                (Value::Bool(l), Value::Bool(r)) => Value::Bool(l || r),
+                (l, r) => bail!("can't add {:?} and {:?}", l, r),
+            },
+            Op::Sub => match (lhs, rhs) {
+                (Value::Int(l), Value::Int(r)) => Value::Int(l - r),
+                (l, r) => bail!("can't subtract {:?} and {:?}", l, r),
+            },
+            Op::Div => match (lhs, rhs) {
+                (Value::Int(l), Value::Int(r)) => Value::Int(l / r),
+                (l, r) => bail!("can't divide {:?} and {:?}", l, r),
+            },
+            Op::Mul => match (lhs, rhs) {
+                (Value::Int(l), Value::Int(r)) => Value::Int(l * r),
+                (l, r) => bail!("can't multiply {:?} and {:?}", l, r),
+            },
+            Op::And => Value::Bool(lhs.as_bool()? && rhs.as_bool()?),
+            Op::Or => Value::Bool(lhs.as_bool()? || rhs.as_bool()?),
+            Op::Eq => Value::Bool(lhs == rhs),
+            Op::Neq => Value::Bool(lhs != rhs),
+            Op::Gte => match (lhs, rhs) {
+                (Value::Int(l), Value::Int(r)) => Value::Bool(l >= r),
+                (l, r) => bail!("can't compare {:?} >= {:?}", l, r),
+            },
+            Op::Gt => match (lhs, rhs) {
+                (Value::Int(l), Value::Int(r)) => Value::Bool(l > r),
+                (l, r) => bail!("can't compare {:?} > {:?}", l, r),
+            },
+            Op::Lte => match (lhs, rhs) {
+                (Value::Int(l), Value::Int(r)) => Value::Bool(l <= r),
+                (l, r) => bail!("can't compare {:?} <= {:?}", l, r),
+            },
+            Op::Lt => match (lhs, rhs) {
+                (Value::Int(l), Value::Int(r)) => Value::Bool(l < r),
+                (l, r) => bail!("can't compare {:?} < {:?}", l, r),
+            },
         })
     }
 

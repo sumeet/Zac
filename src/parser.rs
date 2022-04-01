@@ -241,15 +241,16 @@ peg::parser! {
                 })
             }
 
-        #[cache_left_rec]
         rule expr() -> Expr
-            = while_loop() / if_statement() / func_decl() / comment() / bin_op_expr() / assignment() / list_literal() / int() / func_call() / r#ref()
+            = while_loop() / if_statement() / func_decl() / comment() / assignment() / bin_op_expr() / term()
+
+        #[cache_left_rec]
+        rule term() -> Expr
+            = list_literal() / int() / func_call() / r#ref() / bin_op_expr()
 
         #[cache_left_rec]
         rule bin_op_expr() -> Expr
-            = left:bin_op_expr() _? op:op() _? right:expr() {
-                Expr::BinOp(BinOp { lhs: Box::new(left), op: op, rhs: Box::new(right) })
-            } / left:int() _? op:op() _? right:expr() {
+            = left:term() _? op:op() _? right:term() {
                 Expr::BinOp(BinOp { lhs: Box::new(left), op: op, rhs: Box::new(right) })
             }
 
