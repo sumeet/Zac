@@ -48,6 +48,12 @@ pub(crate) fn rewrap(s: &str) -> String {
                 let s = refill_paragraph(&items_one_line, COMMENT_COLUMN_WIDTH - (INDENT_SIZE + 1));
                 new_comment_string.push_str(&indent(&s, &INDENT_SPACES));
             }
+            CommentNode::Pre(text) => {
+                if i > 0 {
+                    new_comment_string.push_str("\n");
+                }
+                new_comment_string.push_str(&format!("` {}", text));
+            }
         }
     }
     new_comment_string
@@ -113,6 +119,7 @@ enum CommentNode {
     Paragraph(Vec<String>),
     Header(String),
     List(Vec<String>),
+    Pre(String),
 }
 
 const INDENT_SIZE: usize = 2;
@@ -121,66 +128,123 @@ lazy_static! {
     static ref INDENT_SPACES: String = " ".repeat(INDENT_SIZE);
 }
 
-fn parse_comment(s: &str) -> CommentRoot {
-    let mut root = CommentRoot {
-        children: Vec::new(),
-    };
+struct CommentParser {
+    root: CommentRoot,
+    list_acc: Vec<String>,
+    paragraph_acc: Vec<String>,
+}
 
-    let lines = s.lines().map(|s| s.to_string()).collect_vec();
-    let mut i = 0;
+impl CommentParser {
+    fn new() -> Self {
+        Self {
+            list_acc: vec![],
+            paragraph_acc: vec![],
+            root: CommentRoot { children: vec![] },
+        }
+    }
 
-    let mut words_acc = vec![];
-    let mut paragraph_acc = vec![];
+    fn push_node(&mut self, node: CommentNode) {
+        if !matches!(node, CommentNode::Paragraph(_)) {
+            self.flush_paragraph();
+        }
+        if !matches!(node, CommentNode::List(_)) {
+            self.flush_list();
+        }
 
-    while i < lines.len() {
-        let line = &lines[i];
+        match node {
+            CommentNode::Paragraph(p) => self.paragraph_acc.extend(p),
+            CommentNode::Header(h) => self.root.children.push(CommentNode::Header(h)),
+            CommentNode::List(l) => self.list_acc.extend(l),
+            CommentNode::Pre(p) => self.root.children.push(CommentNode::Pre(p)),
+        }
+    }
 
-        if line.starts_with(INDENT_SPACES.as_str()) {
-            // TODO: refactor into struct+impl (OO)
-            if !paragraph_acc.is_empty() {
-                let mut clear_paragraph_acc = vec![];
-                std::mem::swap(&mut clear_paragraph_acc, &mut paragraph_acc);
-                root.children
-                    .push(CommentNode::Paragraph(clear_paragraph_acc));
+    fn flush_paragraph(&mut self) {
+        if !self.paragraph_acc.is_empty() {
+            let mut clear_paragraph_acc = vec![];
+            std::mem::swap(&mut clear_paragraph_acc, &mut self.paragraph_acc);
+            self.root
+                .children
+                .push(CommentNode::Paragraph(clear_paragraph_acc));
+        }
+    }
+
+    fn flush_list(&mut self) {
+        if !self.list_acc.is_empty() {
+            let mut clear_list_acc = vec![];
+            std::mem::swap(&mut clear_list_acc, &mut self.list_acc);
+            self.root.children.push(CommentNode::List(clear_list_acc));
+        }
+    }
+
+    fn parse(mut self, s: &str) -> CommentRoot {
+        let lines = s.lines().map(|s| s.to_string()).collect_vec();
+        let mut i = 0;
+
+        while i < lines.len() {
+            let line = &lines[i];
+
+            if line.starts_with("` ") {
+                self.root
+                    .children
+                    .push(CommentNode::Pre(line[2..].to_string()));
+                i += 1;
+                continue;
+            } else if line.starts_with(INDENT_SPACES.as_str()) {
+                // TODO: refactor into struct+impl (OO)
+                if !self.paragraph_acc.is_empty() {
+                    let mut clear_paragraph_acc = vec![];
+                    std::mem::swap(&mut clear_paragraph_acc, &mut self.paragraph_acc);
+                    self.root
+                        .children
+                        .push(CommentNode::Paragraph(clear_paragraph_acc));
+                }
+
+                self.list_acc
+                    .extend(line.split_whitespace().map(|s| s.to_string()));
+                i += 1;
+                continue;
+            } else if !self.list_acc.is_empty() {
+                self.root.children.push(CommentNode::List(
+                    self.list_acc.iter().map(|s| s.to_string()).collect(),
+                ));
+                self.list_acc.clear();
             }
 
-            words_acc.extend(line.split_whitespace());
+            if line.ends_with(':') {
+                self.root
+                    .children
+                    .push(CommentNode::Header(line[..line.len() - 1].to_string()));
+                i += 1;
+                continue;
+            }
+
+            if line == "" {
+                if !self.paragraph_acc.is_empty() {
+                    let mut clear_paragraph_acc = vec![];
+                    std::mem::swap(&mut clear_paragraph_acc, &mut self.paragraph_acc);
+                    self.root
+                        .children
+                        .push(CommentNode::Paragraph(clear_paragraph_acc));
+                }
+                i += 1;
+                continue;
+            }
+
+            self.paragraph_acc.push(line.to_string());
             i += 1;
-            continue;
-        } else if !words_acc.is_empty() {
-            root.children.push(CommentNode::List(
-                words_acc.iter().map(|s| s.to_string()).collect(),
+        }
+
+        if !self.list_acc.is_empty() {
+            self.root.children.push(CommentNode::List(
+                self.list_acc.iter().map(|s| s.to_string()).collect(),
             ));
-            words_acc.clear();
         }
 
-        if line.ends_with(':') {
-            root.children
-                .push(CommentNode::Header(line[..line.len() - 1].to_string()));
-            i += 1;
-            continue;
-        }
-
-        if line == "" {
-            if !paragraph_acc.is_empty() {
-                let mut clear_paragraph_acc = vec![];
-                std::mem::swap(&mut clear_paragraph_acc, &mut paragraph_acc);
-                root.children
-                    .push(CommentNode::Paragraph(clear_paragraph_acc));
-            }
-            i += 1;
-            continue;
-        }
-
-        paragraph_acc.push(line.to_string());
-        i += 1;
+        self.root
     }
+}
 
-    if !words_acc.is_empty() {
-        root.children.push(CommentNode::List(
-            words_acc.iter().map(|s| s.to_string()).collect(),
-        ));
-    }
-
-    root
+fn parse_comment(s: &str) -> CommentRoot {
+    CommentParser::new().parse(s)
 }

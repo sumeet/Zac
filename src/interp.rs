@@ -27,20 +27,20 @@ pub fn builtin_comment(interpreter: &Interpreter, name: &str) -> Option<String> 
         "example-function" => Some(
             r#"The following function computes the nth value in the Fibonacci sequence:
 
-defn fib(n) {
-    let a = 1
-    let b = 1
-    let temp = 1
-    let i = 0;
-    while (i < n) {
-        let temp = a + b
-        let a = b
-        let b = temp
-        i = i + 1
-    }
-    a
-}"#
-            .to_string(),
+` defn fib(n) {
+`     let a = 1
+`     let b = 1
+`     let temp = 1
+`     let i = 0;
+`     while (i < n) {
+`         let temp = a + b
+`         let a = b
+`         let b = temp
+`         i = i + 1
+`     }
+`     a
+` }"#
+                .to_string(),
         ),
         _ => None,
     }
