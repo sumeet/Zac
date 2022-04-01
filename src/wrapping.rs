@@ -159,6 +159,11 @@ impl CommentParser {
         }
     }
 
+    fn flush_all(&mut self) {
+        self.flush_paragraph();
+        self.flush_list();
+    }
+
     fn flush_paragraph(&mut self) {
         if !self.paragraph_acc.is_empty() {
             let mut clear_paragraph_acc = vec![];
@@ -178,69 +183,22 @@ impl CommentParser {
     }
 
     fn parse(mut self, s: &str) -> CommentRoot {
-        let lines = s.lines().map(|s| s.to_string()).collect_vec();
-        let mut i = 0;
-
-        while i < lines.len() {
-            let line = &lines[i];
-
+        for line in s.lines() {
             if line.starts_with("` ") {
-                self.root
-                    .children
-                    .push(CommentNode::Pre(line[2..].to_string()));
-                i += 1;
-                continue;
+                self.push_node(CommentNode::Pre(line[2..].to_string()));
             } else if line.starts_with(INDENT_SPACES.as_str()) {
-                // TODO: refactor into struct+impl (OO)
-                if !self.paragraph_acc.is_empty() {
-                    let mut clear_paragraph_acc = vec![];
-                    std::mem::swap(&mut clear_paragraph_acc, &mut self.paragraph_acc);
-                    self.root
-                        .children
-                        .push(CommentNode::Paragraph(clear_paragraph_acc));
-                }
-
-                self.list_acc
-                    .extend(line.split_whitespace().map(|s| s.to_string()));
-                i += 1;
-                continue;
-            } else if !self.list_acc.is_empty() {
-                self.root.children.push(CommentNode::List(
-                    self.list_acc.iter().map(|s| s.to_string()).collect(),
+                self.push_node(CommentNode::List(
+                    line.split_whitespace().map(|s| s.to_string()).collect(),
                 ));
-                self.list_acc.clear();
+            } else if line.ends_with(':') {
+                self.push_node(CommentNode::Header(line[..line.len() - 1].to_string()));
+            } else if line == "" {
+                self.flush_all();
+            } else {
+                self.push_node(CommentNode::Paragraph(vec![line.to_string()]));
             }
-
-            if line.ends_with(':') {
-                self.root
-                    .children
-                    .push(CommentNode::Header(line[..line.len() - 1].to_string()));
-                i += 1;
-                continue;
-            }
-
-            if line == "" {
-                if !self.paragraph_acc.is_empty() {
-                    let mut clear_paragraph_acc = vec![];
-                    std::mem::swap(&mut clear_paragraph_acc, &mut self.paragraph_acc);
-                    self.root
-                        .children
-                        .push(CommentNode::Paragraph(clear_paragraph_acc));
-                }
-                i += 1;
-                continue;
-            }
-
-            self.paragraph_acc.push(line.to_string());
-            i += 1;
         }
-
-        if !self.list_acc.is_empty() {
-            self.root.children.push(CommentNode::List(
-                self.list_acc.iter().map(|s| s.to_string()).collect(),
-            ));
-        }
-
+        self.flush_all();
         self.root
     }
 }
