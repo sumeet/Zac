@@ -1,5 +1,6 @@
 use anyhow::{anyhow, bail};
 use itertools::Itertools;
+use litrs::StringLit;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
@@ -43,6 +44,7 @@ pub enum Expr {
     Comment(Comment),
     Assignment(Assignment),
     IntLiteral(i128),
+    StringLiteral(String),
     ListLiteral(Vec<Expr>),
     FuncDef(FuncDef),
     FunctionCall(FunctionCall),
@@ -125,7 +127,7 @@ fn find_expr_comments_mut(expr: &'a mut Expr) -> anyhow::Result<HashMap<String, 
                 try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
             }
         }
-        Expr::Ref(_) | Expr::IntLiteral(_) => {}
+        Expr::Ref(_) | Expr::IntLiteral(_) | Expr::BinOp(_) | Expr::StringLiteral(_) => {}
         Expr::FuncDef(FuncDef {
             name: _,
             arg_names: _,
@@ -140,8 +142,6 @@ fn find_expr_comments_mut(expr: &'a mut Expr) -> anyhow::Result<HashMap<String, 
                 try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
             }
         }
-        // binop ain't gonna have any comments lol
-        Expr::BinOp(_) => {}
     }
     Ok(comments)
 }
@@ -246,7 +246,7 @@ peg::parser! {
 
         #[cache_left_rec]
         rule term() -> Expr
-            = list_literal() / int() / func_call() / r#ref() / bin_op_expr()
+            = string_literal_expr() / list_literal() / int() / func_call() / r#ref() / bin_op_expr()
 
         #[cache_left_rec]
         rule bin_op_expr() -> Expr
@@ -289,6 +289,9 @@ peg::parser! {
         rule list_literal() -> Expr
             = "[" _? exprs:(expr() ** comma()) _? "]" { Expr::ListLiteral(exprs) }
 
+        rule string_literal_expr() -> Expr
+            = string_lit:string_lit() { Expr::StringLiteral(string_lit) }
+
         rule int() -> Expr
             = num:$("0" / "-"? ['1' ..= '9']+ ['0' ..= '9']*) { Expr::IntLiteral(num.parse().unwrap()) }
 
@@ -319,6 +322,11 @@ peg::parser! {
 
         rule ident() -> &'input str = $(ident_start()+ ['a'..='z' | 'A'..='Z' | '_' | '-' | '0'..='9']*)
         rule ident_start() -> &'input str = $(['a'..='z' | 'A'..='Z' | '_']+)
+
+        rule string_lit() -> String
+            = str:$("\"" (!['"'][_] / "\"\"")* "\"") {?
+                Ok(StringLit::parse(str).or_else(|e| { dbg!(str, e) ; Err("string_lit: " ) })?.value().to_owned())
+            }
 
         rule comma() -> () = _? "," _?
         rule nbspace() = onespace()+

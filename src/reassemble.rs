@@ -3,6 +3,7 @@ use crate::parser::{
     While,
 };
 use itertools::Itertools;
+use std::fmt::Write;
 
 pub fn output_code(program: &Program) -> String {
     let mut assembled = String::new();
@@ -114,7 +115,6 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
             assembled.push_str("]");
         }
         Expr::BinOp(BinOp { op, lhs, rhs }) => {
-            //assembled.push_str("(");
             assemble_expr(assembled, lhs);
             assembled.push_str(match op {
                 Op::Add => " + ",
@@ -131,7 +131,9 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
                 Op::Or => " || ",
             });
             assemble_expr(assembled, rhs);
-            //assembled.push_str(")");
+        }
+        Expr::StringLiteral(s) => {
+            write!(assembled, "{:?}", s.as_str()).unwrap();
         }
     }
 }

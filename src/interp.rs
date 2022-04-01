@@ -207,6 +207,7 @@ impl Interpreter {
                     .collect::<anyhow::Result<Vec<_>>>()?,
             ),
             Expr::BinOp(BinOp { op, lhs, rhs }) => self.eval_bin_op(lhs, *op, rhs)?,
+            Expr::StringLiteral(s) => Value::String(s.into()),
         };
         Ok(val)
     }
