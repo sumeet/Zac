@@ -261,13 +261,18 @@ peg::parser! {
             }
 
         rule expr() -> Expr
-            = while_loop() / if_statement() / func_decl() / comment() / assignment() / bin_op_expr() / result_comment() / term()
-
-        #[cache_left_rec]
-        rule result_comment() -> Expr
-            = term:term() _? "//" _? "#" _? comment_inner_text()? following_comment()* {
-                Expr::ResultComment(next_id(), box term)
+            = comment() /
+              expr:(while_loop() / if_statement() / func_decl() / assignment()
+                    / bin_op_expr() / term()) (nbspace()? / newline()) result_comment:result_comment()? {
+                if result_comment.is_some() {
+                    Expr::ResultComment(next_id(), Box::new(expr))
+                } else {
+                    expr
+                }
             }
+
+        rule result_comment() -> ()
+            = "//" _? "#" comment_inner_text()? following_comment()* { () }
 
         #[cache_left_rec]
         rule term() -> Expr
