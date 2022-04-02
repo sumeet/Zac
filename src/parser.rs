@@ -1,9 +1,24 @@
 use anyhow::{anyhow, bail};
 use itertools::Itertools;
+use lazy_static::lazy_static;
 use litrs::StringLit;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
+use std::sync::Mutex;
+
+pub type ExprID = usize;
+
+lazy_static! {
+    static ref NEXT_ID: Mutex<ExprID> = Mutex::new(0);
+}
+
+fn next_id() -> usize {
+    let mut next_id = NEXT_ID.lock().unwrap();
+    let this_id = *next_id;
+    *next_id += 1;
+    this_id
+}
 
 #[derive(Debug)]
 pub struct Program {
@@ -51,6 +66,7 @@ pub enum Expr {
     While(While),
     If(If),
     BinOp(BinOp),
+    ResultComment(ExprID, Box<Expr>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -141,6 +157,9 @@ fn find_expr_comments_mut(expr: &'a mut Expr) -> anyhow::Result<HashMap<String, 
             for expr in exprs {
                 try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
             }
+        }
+        Expr::ResultComment(_, expr) => {
+            try_extend(&mut comments, &mut find_expr_comments_mut(expr)?)?;
         }
     }
     Ok(comments)
@@ -242,7 +261,13 @@ peg::parser! {
             }
 
         rule expr() -> Expr
-            = while_loop() / if_statement() / func_decl() / comment() / assignment() / bin_op_expr() / term()
+            = while_loop() / if_statement() / func_decl() / comment() / assignment() / bin_op_expr() / result_comment() / term()
+
+        #[cache_left_rec]
+        rule result_comment() -> Expr
+            = term:term() _? "//" _? "#" _? comment_inner_text()? following_comment()* {
+                Expr::ResultComment(next_id(), box term)
+            }
 
         #[cache_left_rec]
         rule term() -> Expr
@@ -306,9 +331,13 @@ peg::parser! {
             = body:comment_string() { Expr::Comment(Comment { name: None, body })}
 
         rule comment_string() -> String
-            = "/" "/" onespace()? body:$([^ '\r' | '\n']*)? following:following_comment()*  {
+            = "/" "/" onespace()? body:comment_inner_text()? following:following_comment()*  {
                 body.map(|b| b.to_owned()).into_iter().chain(following.into_iter()).join("\n")
             }
+
+        rule comment_inner_text() -> &'input str
+            = body:$([^ '\r' | '\n']*) { body }
+
         rule following_comment() -> String
             = newline() c:comment_string() {
                 if c.starts_with("//") {

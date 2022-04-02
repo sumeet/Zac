@@ -2,22 +2,23 @@ use crate::parser::{
     Assignment, BinOp, Block, BlockEl, Comment, Expr, FuncDef, FunctionCall, If, Op, Program, Ref,
     While,
 };
+use crate::{wrapping, Interpreter};
 use itertools::Itertools;
 use std::fmt::Write;
 
-pub fn output_code(program: &Program) -> String {
+pub fn output_code(program: &Program, interp: &Interpreter) -> String {
     let mut assembled = String::new();
-    assemble_expr(&mut assembled, &Expr::Block(program.block.clone()));
+    assemble_expr(&mut assembled, &Expr::Block(program.block.clone()), interp);
     assembled
 }
 
-fn assemble_expr(assembled: &mut String, expr: &Expr) {
+fn assemble_expr(assembled: &mut String, expr: &Expr, interp: &Interpreter) {
     match expr {
         Expr::Block(block) => {
             for block_el in &block.0 {
                 match block_el {
                     BlockEl::Expr(expr) => {
-                        assemble_expr(assembled, expr);
+                        assemble_expr(assembled, expr, interp);
                     }
                     BlockEl::NewLine => assembled.push_str("\n"),
                 }
@@ -57,7 +58,7 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
             assembled.push_str("let ");
             assemble_ref(r#ref, assembled);
             assembled.push_str(" = ");
-            assemble_expr(assembled, expr);
+            assemble_expr(assembled, expr, interp);
         }
         Expr::IntLiteral(n) => assembled.push_str(&n.to_string()),
         Expr::Ref(r#ref) => assemble_ref(r#ref, assembled),
@@ -66,10 +67,10 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
             assembled.push_str("(");
             if let Some((last, init)) = args.split_last() {
                 for arg in init {
-                    assemble_expr(assembled, arg);
+                    assemble_expr(assembled, arg, interp);
                     assembled.push_str(", ");
                 }
-                assemble_expr(assembled, last);
+                assemble_expr(assembled, last, interp);
             }
             assembled.push_str(")");
         }
@@ -79,9 +80,9 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
                 Expr::If(_) => "if (",
                 _ => unreachable!(),
             });
-            assemble_expr(assembled, cond);
+            assemble_expr(assembled, cond, interp);
             assembled.push_str(") {\n");
-            assemble_inner_block(assembled, block);
+            assemble_inner_block(assembled, block, interp);
             assembled.push_str("\n}");
         }
         Expr::FuncDef(FuncDef {
@@ -100,22 +101,22 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
                 assembled.push_str(last);
             }
             assembled.push_str(") {\n");
-            assemble_inner_block(assembled, block);
+            assemble_inner_block(assembled, block, interp);
             assembled.push_str("\n}");
         }
         Expr::ListLiteral(list) => {
             assembled.push_str("[");
             if let Some((last, init)) = list.split_last() {
                 for item in init {
-                    assemble_expr(assembled, item);
+                    assemble_expr(assembled, item, interp);
                     assembled.push_str(", ");
                 }
-                assemble_expr(assembled, last);
+                assemble_expr(assembled, last, interp);
             }
             assembled.push_str("]");
         }
         Expr::BinOp(BinOp { op, lhs, rhs }) => {
-            assemble_expr(assembled, lhs);
+            assemble_expr(assembled, lhs, interp);
             assembled.push_str(match op {
                 Op::Add => " + ",
                 Op::Sub => " - ",
@@ -130,17 +131,36 @@ fn assemble_expr(assembled: &mut String, expr: &Expr) {
                 Op::And => " && ",
                 Op::Or => " || ",
             });
-            assemble_expr(assembled, rhs);
+            assemble_expr(assembled, rhs, interp);
         }
         Expr::StringLiteral(s) => {
             write!(assembled, "{:?}", s.as_str()).unwrap();
         }
+        Expr::ResultComment(id, expr) => {
+            assemble_expr(assembled, expr, interp);
+            assembled.push_str(" // #");
+            let result_comments = interp.result_comments.borrow();
+            if let Some(value) = result_comments.get(id) {
+                let comment = wrapping::stringify(value);
+                let lines = comment.lines().collect_vec();
+                if let Some((first, rest)) = lines.split_first() {
+                    assembled.push_str(first);
+                    if !rest.is_empty() {
+                        for line in rest {
+                            assembled.push_str("\n");
+                            assembled.push_str("// ");
+                            assembled.push_str(line);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
-fn assemble_inner_block(assembled: &mut String, block: &Block) {
+fn assemble_inner_block(assembled: &mut String, block: &Block, interp: &Interpreter) {
     let mut inner = String::new();
-    assemble_expr(&mut inner, &Expr::Block(block.clone()));
+    assemble_expr(&mut inner, &Expr::Block(block.clone()), interp);
     let inner = inner
         .lines()
         .map(|line| {

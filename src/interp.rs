@@ -1,8 +1,10 @@
 use anyhow::{anyhow, bail};
 use dyn_partial_eq::*;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use crate::parser::{Assignment, BinOp, Block, Comment, Expr, FunctionCall, If, Op, Ref, While};
+use crate::parser::{
+    Assignment, BinOp, Block, Comment, Expr, ExprID, FunctionCall, If, Op, Ref, While,
+};
 use crate::{parser, wrapping};
 use dyn_clone::DynClone;
 use itertools::Itertools;
@@ -18,6 +20,7 @@ use std::sync::Mutex;
 pub struct Interpreter {
     scope: Rc<RefCell<Scope>>,
     comments: Rc<RefCell<BTreeMap<String, String>>>,
+    pub(crate) result_comments: Rc<RefCell<HashMap<ExprID, Value>>>,
 }
 
 const BUILTIN_COMMENTS: &[&str; 2] = &["help", "example-function"];
@@ -68,6 +71,7 @@ impl Interpreter {
         });
 
         Self {
+            result_comments: Rc::new(RefCell::new(HashMap::new())),
             scope: Rc::new(RefCell::new(scope)),
             comments: Rc::new(RefCell::new(BTreeMap::new())),
         }
@@ -200,6 +204,12 @@ impl Interpreter {
             ),
             Expr::BinOp(BinOp { op, lhs, rhs }) => self.eval_bin_op(lhs, *op, rhs)?,
             Expr::StringLiteral(s) => Value::String(s.into()),
+            Expr::ResultComment(id, expr) => {
+                let val = self.interp(expr)?;
+                let mut comments = self.result_comments.borrow_mut();
+                comments.insert(id.clone(), val.clone());
+                val
+            }
         };
         Ok(val)
     }

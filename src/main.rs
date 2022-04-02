@@ -1,6 +1,7 @@
 #![feature(exclusive_range_pattern)]
 #![feature(map_try_insert)]
 #![feature(in_band_lifetimes)]
+#![feature(box_syntax)]
 
 use anyhow::anyhow;
 use std::fs::{read_to_string, File};
@@ -28,7 +29,7 @@ pub fn main() -> anyhow::Result<()> {
 
     replace_comments_in_source_code(&mut program, &mut interp)?;
 
-    let assembled = reassemble::output_code(&program);
+    let assembled = reassemble::output_code(&program, &interp);
     if is_dry_run {
         stdout().lock().write_all(assembled.as_bytes())?;
     } else {

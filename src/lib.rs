@@ -1,6 +1,7 @@
 #![feature(exclusive_range_pattern)]
 #![feature(map_try_insert)]
 #![feature(in_band_lifetimes)]
+#![feature(box_syntax)]
 
 use crate::interp::builtin_comment;
 use crate::parser::{find_comments_mut, Expr, Program};
@@ -25,7 +26,7 @@ pub fn run(code: &str) -> anyhow::Result<String> {
 
     replace_comments_in_source_code(&mut program, &mut interp)?;
 
-    Ok(reassemble::output_code(&program))
+    Ok(reassemble::output_code(&program, &interp))
 }
 
 pub fn replace_comments_in_source_code(
