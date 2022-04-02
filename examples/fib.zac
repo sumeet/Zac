@@ -12,9 +12,9 @@ let a = 1
 let b = 1
 let temp = 1
 
-while (not(eq(counter, end))) {
-  let counter = add(counter, 1)
-  let temp = add(a, b)
+while (counter != end) {
+  let counter = counter + 1
+  let temp = a + b
   let a = b
   let b = temp
 
