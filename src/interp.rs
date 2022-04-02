@@ -62,6 +62,14 @@ impl Interpreter {
     pub fn new() -> Self {
         let mut scope = Scope::new(None);
         scope.insert("set".into(), Value::Function(Box::new(SetBuiltin {})));
+        scope.insert("add".into(), Value::Function(Box::new(AddBuiltin {})));
+        scope.insert("mul".into(), Value::Function(Box::new(MulBuiltin {})));
+        scope.insert("eq".into(), Value::Function(Box::new(EqBuiltin {})));
+        scope.insert("lt".into(), Value::Function(Box::new(LtBuiltin {})));
+        scope.insert("gt".into(), Value::Function(Box::new(GtBuiltin {})));
+        scope.insert("not".into(), Value::Function(Box::new(NotBuiltin {})));
+        scope.insert("and".into(), Value::Function(Box::new(AndBuiltin {})));
+        scope.insert("or".into(), Value::Function(Box::new(OrBuiltin {})));
         scope.insert("print".into(), Value::Function(Box::new(PrintBuiltin {})));
         scope.insert("show".into(), Value::Function(Box::new(ShowBuiltin {})));
         scope.insert("chr".into(), Value::Function(Box::new(ChrBuiltin {})));
